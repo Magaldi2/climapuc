@@ -315,6 +315,16 @@ def plot_data():
                            average_temperature=average_temperature,
                            max_temperature=max_temperature,
                            min_temperature=min_temperature,)
+@app.route('/luminaires')
+def luminaires():
+    # dados testes
+    luminaires_data = [{"id": 1, "name": "Luminaria Portaria Principal", "lat": -22.83389, "lon": -47.04544, "status": "ligada"},
+                      {"id": 2, "name": "Luminaria Biblioteca", "lat": -22.83290, "lon": -47.04471, "status": "desligada"},
+                      {"id": 3, "name": "Luminaria Praca Civica", "lat": -22.83408, "lon": -47.04319, "status": "ligada"},
+                      {"id": 4, "name": "Luminaria Estacionamento CCHSA", "lat": -22.83505, "lon": -47.04575, "status": "desligada"},
+                      {"id": 5, "name": "Luminaria Ginasio", "lat": -22.83182, "lon": -47.04225, "status": "desligada"}]
+    return render_template('luminaire.html', luminaires_data=luminaires_data)
+
 @app.route('/about')
 def about():
     return render_template('about.html')
