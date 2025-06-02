@@ -24,7 +24,6 @@
       rel="stylesheet"
     />
     <style>
-      /* Estilos Globais e Reset */
       * {
         margin: 0;
         padding: 0;
@@ -35,16 +34,13 @@
         background: #1f2a44;
         color: #fff;
         min-height: 100vh;
-        display: flex; /* Usado para layout da sidebar e conteúdo principal */
+        display: flex;
       }
 
-      /* === INÍCIO ESTILOS SIDEBAR === */
       .sidebar {
-        /* Dimensões e Posição da Sidebar */
         width: 80px;
-        height: 100vh; /* Altura total da tela */
-        position: fixed; /* Fixa na tela */
-        /* Aparência da Sidebar */
+        height: 100vh;
+        position: fixed;
         background-color: #2a3550;
         display: flex;
         flex-direction: column;
@@ -54,14 +50,12 @@
         z-index: 1000;
       }
       .sidebar.hide {
-        transform: translateX(-100%); /* Esconde a sidebar */
+        transform: translateX(-100%);
       }
-      /* Estilos para o Logo na Sidebar */
       .sidebar img.logo {
-        width: 50px; /* Largura do logo */
+        width: 50px;
         margin-bottom: 30px;
       }
-      /* Estilos para Itens de Navegação na Sidebar */
       .sidebar .nav-item {
         margin: 20px 0;
         cursor: pointer;
@@ -72,113 +66,197 @@
         text-decoration: none;
       }
       .sidebar .nav-item i {
-        font-size: 1.8em; /* Tamanho dos ícones */
+        font-size: 1.8em;
       }
       .sidebar .nav-item.who-we-are {
-        margin-top: auto; /* Alinha o item "Sobre Nós" na parte inferior */
+        margin-top: auto;
       }
-      /* === FIM ESTILOS SIDEBAR === */
 
-      /* === INÍCIO ESTILOS CONTEÚDO PRINCIPAL === */
       .main-content {
-        /* Dimensões e Espaçamento do Conteúdo Principal */
-        margin-left: 80px; /* Deve corresponder à largura da sidebar */
+        margin-left: 80px;
         padding: 15px;
-        width: calc(100% - 80px); /* Largura total menos a sidebar */
-        /* Comportamento do Conteúdo Principal */
+        width: calc(100% - 80px);
         transition: margin-left 0.3s ease-in-out;
-        overflow-y: auto; /* Permite rolagem se o conteúdo exceder a altura */
+        overflow-y: auto;
       }
       .sidebar.hide + .main-content {
-        margin-left: 0; /* Ajusta a margem quando a sidebar está oculta */
+        margin-left: 0;
         width: 100%;
       }
-      /* === FIM ESTILOS CONTEÚDO PRINCIPAL === */
 
-      /* === INÍCIO ESTILOS BARRA SUPERIOR (TOP BAR) === */
       .top-bar {
         display: flex;
         align-items: center;
         margin-bottom: 20px;
       }
       .menu-btn {
-        /* Botão de menu (hambúrguer) */
         background: none;
         border: none;
         color: #fff;
-        font-size: 2em; /* Tamanho do ícone do menu */
+        font-size: 2em;
         cursor: pointer;
       }
       .top-bar h1 {
-        /* Título da Página */
-        font-size: 2.5em; /* Tamanho da fonte do título */
+        font-size: 2.5em;
         text-align: center;
         flex-grow: 1;
       }
       .top-bar .dummy {
-        width: 2.2em; /* Espaço reservado para alinhar o título, se necessário */
+        width: 2.2em;
       }
-      /* === FIM ESTILOS BARRA SUPERIOR (TOP BAR) === */
 
-      /* === INÍCIO ESTILOS CONTAINER DO MAPA === */
       #map {
-        /* Dimensões do Mapa */
-        height: 60vh; /* Altura relativa à tela (viewport height) */
-        width: 100%; /* Largura total do container pai */
-        /* Aparência do Mapa */
+        height: 75vh;
+        width: 100%;
         border-radius: 15px;
         margin-bottom: 20px;
         box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
       }
-      /* === FIM ESTILOS CONTAINER DO MAPA === */
 
-      /* === INÍCIO ESTILOS PAINEL DE CONTROLE DA LUMINÁRIA === */
-      .luminaire-controls {
-        /* O "box" para os controles */
-        /* Aparência do Painel */
+      .leaflet-tooltip {
+        background-color: rgba(47, 59, 88, 0.9) !important;
+        color: #ffffff !important;
+        border: 1px solid #02d7fd !important;
+        border-radius: 5px !important;
+        padding: 8px 12px !important;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+        font-size: 0.9em !important;
+      }
+      .leaflet-tooltip-top:before,
+      .leaflet-tooltip-bottom:before,
+      .leaflet-tooltip-left:before,
+      .leaflet-tooltip-right:before {
+        background: rgba(47, 59, 88, 0.9) !important;
+      }
+
+      /* Estilos para o Modal de Configuração */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 2000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding-top: 40px;
+      }
+      .modal-content {
         background-color: #2f3b58;
+        color: #fff;
+        margin: 2% auto;
+        padding: 30px;
+        border: 1px solid #02d7fd;
         border-radius: 10px;
-        padding: 20px; /* Espaçamento interno */
+        width: 90%;
+        max-width: 650px; /* Aumentado max-width */
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        position: relative;
+      }
+      .modal-close-button {
+        color: #aaa;
+        float: right;
+        font-size: 30px;
+        font-weight: bold;
+        line-height: 0.8;
+      }
+      .modal-close-button:hover,
+      .modal-close-button:focus {
+        color: #02d7fd;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .modal-content h3 {
+        color: #ffd700;
+        margin-bottom: 20px;
+        text-align: center;
+        font-size: 1.8em;
+      }
+      .modal-content p {
+        margin-bottom: 15px;
+        text-align: center;
+        font-size: 1.1em;
+      }
+      .modal-content hr {
+        border-color: rgba(255, 255, 255, 0.2);
+        margin: 20px 0;
+      }
+
+      /* Estilos para o controle de Dimmer */
+      .dimmer-control-container {
+        margin-bottom: 20px;
         text-align: center;
       }
-      .luminaire-controls h3 {
-        /* Título dentro do painel */
-        color: #ffd700;
+      .dimmer-control-container label {
+        display: block;
         margin-bottom: 10px;
-        font-size: 1.5em; /* Tamanho da fonte do nome da luminária */
+        font-size: 1.1em;
+        color: #fff;
       }
-      .luminaire-controls p {
-        /* Texto de status dentro do painel */
-        margin-bottom: 15px;
-        font-size: 1em; /* Tamanho da fonte do status */
+      .dimmer-control-container #dimmerValueDisplay {
+        font-weight: bold;
+        color: #02d7fd;
       }
-      .luminaire-controls button {
-        /* Botões de controle */
-        /* Dimensões e Espaçamento dos Botões */
-        padding: 10px 20px;
-        margin: 5px;
-        /* Aparência dos Botões */
+      .dimmer-slider {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 80%;
+        height: 10px;
+        background: #555;
+        outline: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 5px;
+      }
+      .dimmer-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 22px;
+        height: 22px;
+        background: #02d7fd;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid #fff;
+      }
+      .dimmer-slider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: #02d7fd;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid #fff;
+      }
+
+      .modal-controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+      } /* Centralizado */
+      .modal-controls button {
+        padding: 12px 25px;
         background-color: #02d7fd;
         color: #1f2a44;
         border: none;
         border-radius: 5px;
         cursor: pointer;
         font-weight: bold;
-        font-size: 0.9em; /* Tamanho da fonte nos botões */
+        font-size: 1em; /* Aumentado */
+        flex-grow: 0; /* Não cresce */
+        min-width: 120px;
       }
-      .luminaire-controls button:hover {
+      .modal-controls button:hover {
         background-color: #0197c1;
       }
-      /* === FIM ESTILOS PAINEL DE CONTROLE DA LUMINÁRIA === */
 
-      /* Ajustes Responsivos */
       @media (max-width: 768px) {
         .top-bar h1 {
           font-size: 1.8em;
         }
         #map {
-          height: 50vh;
-        } /* Altura do mapa em telas menores */
+          height: 65vh;
+        }
         .main-content {
           margin-left: 0;
           width: 100%;
@@ -186,9 +264,27 @@
         .sidebar.hide + .main-content {
           margin-left: 0;
         }
+        .modal-content {
+          width: 95%;
+          max-width: 95%;
+          margin-top: 5%;
+          padding: 20px;
+        }
+        .modal-content h3 {
+          font-size: 1.5em;
+        }
+        .modal-controls button {
+          font-size: 0.9em;
+          padding: 10px 15px;
+          min-width: 100px;
+        }
+        .dimmer-slider {
+          width: 90%;
+        }
       }
     </style>
   </head>
+
   <body>
     <aside class="sidebar" id="sidebar">
       <a href="/">
@@ -198,7 +294,6 @@
           class="logo"
         />
       </a>
-
       <div class="nav-item">
         <a href="/temperatura" title="Gráfico de Temperatura">
           <i class="fas fa-thermometer-half"></i>
@@ -220,6 +315,7 @@
         </a>
       </div>
     </aside>
+
     <div class="main-content" id="mainContent">
       <div class="top-bar">
         <button class="menu-btn" onclick="toggleSidebarVisibility()">
@@ -228,28 +324,41 @@
         <h1>Controle de Luminárias</h1>
         <div class="dummy"></div>
       </div>
-
       <div id="map"></div>
+    </div>
 
-      <div
-        class="luminaire-controls"
-        id="luminaireControlPanel"
-        style="display: none"
-      >
-        <h3 id="luminaireName">Nome da Luminária</h3>
-        <p id="luminaireStatus">Status: Desconhecido</p>
-        <button onclick="controlLuminaire('on')">Ligar</button>
-        <button onclick="controlLuminaire('off')">Desligar</button>
-        <button onclick="controlLuminaire('dim_up')">Dimmer +</button>
-        <button onclick="controlLuminaire('dim_down')">Dimmer -</button>
-      </div>
-      <div
-        id="noLuminaireSelected"
-        style="text-align: center; margin-top: 20px"
-      >
-        <p>Clique em uma luminária no mapa para ver as opções de controle.</p>
+    <div id="configModal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close-button" onclick="closeConfigModal()"
+          >&times;</span
+        >
+        <h3 id="modalLuminaireName">Nome da Luminária</h3>
+        <p id="modalLuminaireStatus">Status: Desconhecido</p>
+        <hr />
+        <div class="dimmer-control-container">
+          <label for="dimmerSlider"
+            >Intensidade do Dimmer:
+            <span id="dimmerValueDisplay">50</span>%</label
+          >
+          <input
+            type="range"
+            id="dimmerSlider"
+            min="0"
+            max="100"
+            value="50"
+            class="dimmer-slider"
+            oninput="updateDimmerValueDisplay(this.value)"
+            onchange="controlLuminaire('set_dimmer', this.value)"
+          />
+        </div>
+        <hr />
+        <div class="modal-controls">
+          <button onclick="controlLuminaire('on')">Ligar</button>
+          <button onclick="controlLuminaire('off')">Desligar</button>
+        </div>
       </div>
     </div>
+
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
@@ -257,7 +366,6 @@
     ></script>
 
     <script>
-      // Função para alternar a visibilidade da sidebar
       function toggleSidebarVisibility() {
         const sb = document.getElementById("sidebar");
         const mc = document.getElementById("mainContent");
@@ -265,13 +373,58 @@
         mc.style.marginLeft = sb.classList.contains("hide") ? "0" : "80px";
       }
 
-      // Dados das luminárias (recebidos do backend Flask)
-      const luminairesData = JSON.parse('{{ luminaires_data|tojson|safe }}');
-      console.log("Dados recebidos:", luminairesData);
-      let selectedLuminaireId = null; // Armazena o ID da luminária selecionada
+      let selectedLuminaireId = null;
 
-      // Configuração e Inicialização do Mapa Leaflet
-      const map = L.map("map").setView([-22.83408, -47.04319], 16); // Ponto central e zoom inicial
+      function updateDimmerValueDisplay(value) {
+        document.getElementById("dimmerValueDisplay").textContent = value;
+      }
+
+      function prepareAndOpenConfigModal(luminaireId) {
+        const luminaire = luminairesData.find((l) => l.id === luminaireId);
+        if (luminaire) {
+          selectedLuminaireId = luminaire.id;
+          document.getElementById("modalLuminaireName").textContent =
+            luminaire.name;
+          document.getElementById(
+            "modalLuminaireStatus"
+          ).textContent = `Status: ${luminaire.status || "N/A"}`;
+
+          // Define o valor inicial do slider e atualiza o display
+          // (Assumindo que 'luminaire.dimmer_level' poderia vir dos dados no futuro, caso contrário, usa o valor padrão do HTML)
+          const currentDimmerLevel =
+            luminaire.dimmer_level !== undefined
+              ? luminaire.dimmer_level
+              : document.getElementById("dimmerSlider").value;
+          document.getElementById("dimmerSlider").value = currentDimmerLevel;
+          updateDimmerValueDisplay(currentDimmerLevel);
+
+          document.getElementById("configModal").style.display = "block";
+        }
+      }
+
+      function closeConfigModal() {
+        document.getElementById("configModal").style.display = "none";
+      }
+
+      function controlLuminaire(action, value = null) {
+        // Adicionado 'value' para o dimmer
+        if (selectedLuminaireId !== null) {
+          let message = `Ação: ${action}`;
+          if (action === "set_dimmer" && value !== null) {
+            message += ` para ${value}%`;
+            // Aqui você também pode querer atualizar o 'luminaire.status' ou 'luminaire.dimmer_level'
+            // no objeto 'luminairesData' e talvez o '#modalLuminaireStatus'
+            // Ex: document.getElementById('modalLuminaireStatus').textContent = `Status: Dimmer em ${value}%`;
+          }
+          message += ` na Luminária ID: ${selectedLuminaireId}\n(Integração com API externa pendente)`;
+          alert(message);
+        } else {
+          alert("Nenhuma luminária selecionada para controle.");
+        }
+      }
+
+      const luminairesData = JSON.parse('{{ luminaires_data|tojson|safe }}');
+      const map = L.map("map").setView([-22.83408, -47.04319], 16);
 
       L.tileLayer(
         "https://api.maptiler.com/maps/dataviz/{z}/{x}/{y}.png?key=RZXpb9LpxsGCRktNA6mT",
@@ -285,49 +438,41 @@
         }
       ).addTo(map);
 
-      // Loop para adicionar marcadores (pins) no mapa para cada luminária
-      luminairesData.forEach((luminaire) => {
-        const marker = L.marker([luminaire.lat, luminaire.lon]).addTo(map);
-        marker.bindPopup(`<b>${luminaire.name}</b><br>Clique para controlar.`); // Popup ao clicar no marcador
-        marker.on("click", () => {
-          // Ação ao clicar no marcador
-          selectedLuminaireId = luminaire.id;
-          document.getElementById("luminaireName").textContent = luminaire.name;
-          document.getElementById("luminaireStatus").textContent =
-            "Status: Pronta para controle"; // Atualiza painel
-          document.getElementById("luminaireControlPanel").style.display =
-            "block"; // Mostra painel
-          document.getElementById("noLuminaireSelected").style.display = "none"; // Esconde msg padrão
-          console.log(
-            `Luminaire selecionada: ${luminaire.name} (ID: ${luminaire.id})`
-          );
-        });
-      });
+      if (luminairesData && luminairesData.length > 0) {
+        luminairesData.forEach((luminaire) => {
+          const marker = L.marker([luminaire.lat, luminaire.lon]).addTo(map);
 
-      // Função de Controle da Luminária (PLACEHOLDER)
-      // Esta função será modificada para enviar requisições à API do provedor da fotocélula
-      function controlLuminaire(action) {
-        if (selectedLuminaireId !== null) {
-          alert(
-            `Ação: ${action} para Luminária ID: ${selectedLuminaireId}\n(Integração com API externa pendente)`
+          marker.bindTooltip(
+            `<strong>${luminaire.name}</strong><br>ID: ${
+              luminaire.id
+            }<br>Status: ${luminaire.status || "N/A"}`,
+            {
+              direction: "top",
+              offset: L.point(
+                0,
+                -(marker.options.icon.options.iconSize
+                  ? marker.options.icon.options.iconSize[1] / 2
+                  : 20)
+              ),
+              permanent: false,
+              sticky: true,
+            }
           );
-          // Exemplo de como a chamada à API poderia ser (descomentar e adaptar no futuro):
-          // fetch(`/api/provider/luminaires/${selectedLuminaireId}/${action}`, { method: 'POST' })
-          //   .then(response => response.json())
-          //   .then(data => {
-          //     console.log('Sucesso na API:', data);
-          //     document.getElementById('luminaireStatus').textContent = `Status: ${data.status_atual}`;
-          //   })
-          //   .catch((error) => {
-          //     console.error('Erro na API:', error);
-          //     document.getElementById('luminaireStatus').textContent = "Status: Erro ao comunicar com API";
-          //   });
-        } else {
-          alert(
-            "Nenhuma luminária selecionada. Clique em uma luminária no mapa primeiro."
-          );
-        }
+
+          marker.on("click", function () {
+            prepareAndOpenConfigModal(luminaire.id);
+          });
+        });
+      } else {
+        console.warn("Nenhum dado de luminária para exibir no mapa.");
       }
+
+      window.onclick = function (event) {
+        const modal = document.getElementById("configModal");
+        if (event.target == modal) {
+          closeConfigModal();
+        }
+      };
     </script>
   </body>
 </html>
