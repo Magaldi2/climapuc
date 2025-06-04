@@ -2,6 +2,6 @@ Flask==2.3.2
 gunicorn==21.2.0
 paho-mqtt==2.1.0
 mysql-connector-python==8.0.33
-dotenv==1.0.0
+python-dotenv
 requests==2.31.0
-
+PyJWT

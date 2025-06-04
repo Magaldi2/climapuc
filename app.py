@@ -4,10 +4,14 @@ from multiprocessing import Process
 import mqtt_handler as mqtt_handler
 from mqtt_handler import setup_mqtt
 import math
+import requests
 import mysql.connector
 from dotenv import load_dotenv
+import jwt  
 import os
 from datetime import datetime, timedelta , timezone
+
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -16,39 +20,70 @@ API_URL = os.getenv("API_URL")
 API_USERNAME = os.getenv("API_USERNAME")
 API_PASSWORD = os.getenv("API_PASSWORD")
 
-api_auth_token = None
+
+api_auth_token_full = None
 token_expiration_time = 0
 
 # rotina de login na API da Constanta
+
 def validar_api_login():
-    global api_auth_token, token_expiration_time
-    
-    if api_auth_token and (token_expiration_time > (time.time() + 60)):
+    global api_auth_token_full, token_expiration_time
+
+    if api_auth_token_full and (token_expiration_time > (time.time() + 60)):
         print(f"Usando token existente. Válido até: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(token_expiration_time))}")
         return True
-    print("Token nao encontrado ou expirado. Realizando login em {API_URL}")
-    login_url = f"{API_URL}/login" 
+
+    print(f"Token nao encontrado ou expirado. Realizando login em {API_URL}")
+    login_url = f"{API_URL}/login"
     login_payload = {
         "username": API_USERNAME,
         "password": API_PASSWORD
     }
 
     try:
-        response = flask_request.post(login_url, json=login_payload, timeout = 10)
-        response.raise_for_status()                # Levanta um erro se a resposta não for 200
+        response = requests.post(login_url, json=login_payload, timeout=10)
+        response.raise_for_status()
+        response_header = response.headers
 
-        response_data = response.json()
-        print(f"Resposta JSON do POST /login: {response_data}")
+        retrive_token = response_header.get("Authorization")  # token JWT no header
 
-        retrive_token = response_data.get("token") # token
-        retrive_exp = response_data.get("exp")     # tempo de expiracao
+        if retrive_token and retrive_token.lower().startswith("bearer "):
+            jwt_token = retrive_token.split(" ", 1)[1]
+            # Decodifica o JWT sem verificar assinatura
+            payload = jwt.decode(jwt_token, options={"verify_signature": False})
+            retrive_exp = payload.get("exp")
+        else:
+            print("ERRO: Header Authorization não encontrado ou formato inválido.")
+            api_auth_token_full = None
+            return False
 
-        if retrive_token and isinstance(retrive_token, str) and retrive_exp and isinstance(retrive_exp, (int , float)):
+        if retrive_token and isinstance(retrive_token, str) and retrive_exp and isinstance(retrive_exp, (int, float)):
             api_auth_token_full = retrive_token
-            if not api_auth_token_full.lower().startswith("bearer "):
-                print("AVISO : token recebido nao comeca com 'Bearer'. Verifique o formato")
+            token_expiration_time = int(retrive_exp)
+            print(f"Login na API externa bem-sucedido.")
+            print(f"Token (início): {api_auth_token_full[:15]}...")
+            print(f"Expira em: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(token_expiration_time))}")
+            return True
+        else:
+            print("ERRO: Token ou expiração não encontrado no JWT.")
+            api_auth_token_full = None
+            return False
 
-            token_expiration_time = retrive_exp 
+    except requests.exceptions.HTTPError as http_err:
+        error_details = ""
+        try:
+            error_details = http_err.response.json()
+        except ValueError:
+            error_details = http_err.response.text
+        print(f"Erro HTTP durante login na API externa: {http_err}")
+        print(f"Status Code: {http_err.response.status_code}, Detalhes: {error_details}")
+        api_auth_token_full = None
+        return False
+    except requests.exceptions.RequestException as e:
+        print(f"Erro de requisição durante login na API externa: {e}")
+        api_auth_token_full = None
+        return False
+            
 
 
 def rad_to_direction_with_icon(rad):
@@ -163,13 +198,12 @@ def get_mysql_data():
             connection.close()
 
 # CHAMADA DAS APIS DAS LUMINARIAS NA API DA CONTANTA
-
+def setdimmer(int dimmer, int )
 
 
 @app.route('/')
 def index():
     current_data, previous_data = get_mysql_data()
-
     if not current_data:
         return render_template(
             'index.html', 
@@ -282,6 +316,26 @@ def dashboard():
 
     return render_template('dashboard.html', sensor_data=sensor_data)
 
+@app.route('/test_api_login')
+def test_api_login_route():
+    print("Rota /test_api_login foi chamada.")
+    success = validar_api_login() # Chama sua função de login
+    if success:
+        return jsonify({
+            "message": "Teste de login na API externa: SUCESSO!",
+            "token_obtido": bool(api_auth_token_full),
+            "token_preview": api_auth_token_full[:25] + "..." if api_auth_token_full else "Nenhum token",
+            "expira_em": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(token_expiration_time)) if token_expiration_time else "N/A"
+        })
+    else:
+        return jsonify({
+            "message": "Teste de login na API externa: FALHOU!",
+            "token_obtido": False
+        }), 500
+    
+@app.route('api/setdimmer', methods = ['GET'])
+def dimmer():
+
 
 # Rota para gerar gráfico
 @app.route('/temperatura', methods=['GET'])
@@ -384,3 +438,4 @@ def run_mqtt():
 
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=80)
+    validar_api_login()
