@@ -1,24 +1,67 @@
 import time
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request as flask_request
 from multiprocessing import Process 
-import mqtt_handler as mqtt_handler  # Importa o arquivo mqtt_handler.py
+import mqtt_handler as mqtt_handler
 from mqtt_handler import setup_mqtt
 import math
 import mysql.connector
+from dotenv import load_dotenv
+import os
 from datetime import datetime, timedelta , timezone
+
 app = Flask(__name__)
+
+# Configs de login da pagina da constanta
+API_URL = os.getenv("API_URL")
+API_USERNAME = os.getenv("API_USERNAME")
+API_PASSWORD = os.getenv("API_PASSWORD")
+
+api_auth_token = None
+token_expiration_time = 0
+
+# rotina de login na API da Constanta
+def validar_api_login():
+    global api_auth_token, token_expiration_time
+    
+    if api_auth_token and (token_expiration_time > (time.time() + 60)):
+        print(f"Usando token existente. Válido até: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(token_expiration_time))}")
+        return True
+    print("Token nao encontrado ou expirado. Realizando login em {API_URL}")
+    login_url = f"{API_URL}/login" 
+    login_payload = {
+        "username": API_USERNAME,
+        "password": API_PASSWORD
+    }
+
+    try:
+        response = flask_request.post(login_url, json=login_payload, timeout = 10)
+        response.raise_for_status()                # Levanta um erro se a resposta não for 200
+
+        response_data = response.json()
+        print(f"Resposta JSON do POST /login: {response_data}")
+
+        retrive_token = response_data.get("token") # token
+        retrive_exp = response_data.get("exp")     # tempo de expiracao
+
+        if retrive_token and isinstance(retrive_token, str) and retrive_exp and isinstance(retrive_exp, (int , float)):
+            api_auth_token_full = retrive_token
+            if not api_auth_token_full.lower().startswith("bearer "):
+                print("AVISO : token recebido nao comeca com 'Bearer'. Verifique o formato")
+
+            token_expiration_time = retrive_exp 
+
 
 def rad_to_direction_with_icon(rad):
     """Converte radianos para direção cardeal e retorna ícone correspondente."""
     directions = [
-        ('Norte', 'rotate-0'),    # Norte
-        ('Nordeste', 'rotate-45'),  # Nordeste
-        ('Leste', 'rotate-90'),   # Leste
-        ('Sudeste', 'rotate-135'), # Sudeste
-        ('Sul', 'rotate-180'),  # Sul
-        ('Sudoeste', 'rotate-225'), # Sudoeste
-        ('Oeste', 'rotate-270'),  # Oeste
-        ('Noroeste', 'rotate-315')  # Noroeste
+        ('Norte', 'rotate-0'),   
+        ('Nordeste', 'rotate-45'),  
+        ('Leste', 'rotate-90'),   
+        ('Sudeste', 'rotate-135'), 
+        ('Sul', 'rotate-180'),  
+        ('Sudoeste', 'rotate-225'), 
+        ('Oeste', 'rotate-270'),  
+        ('Noroeste', 'rotate-315')  
     ]
     rad = rad % (2 * math.pi)
     index = int((rad + math.pi / 8) // (math.pi / 4)) % 8
@@ -118,6 +161,8 @@ def get_mysql_data():
             cursor.close()
         if connection is not None and connection.is_connected():
             connection.close()
+
+# CHAMADA DAS APIS DAS LUMINARIAS NA API DA CONTANTA
 
 
 
