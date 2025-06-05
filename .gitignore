@@ -1,2 +1,2 @@
 .env
-auth.json
+./src/auth.json
