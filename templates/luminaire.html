@@ -374,6 +374,7 @@
       }
 
       let selectedLuminaireId = null;
+      let serialLuminaire = null;
 
       function updateDimmerValueDisplay(value) {
         document.getElementById("dimmerValueDisplay").textContent = value;
@@ -383,6 +384,7 @@
         const luminaire = luminairesData.find((l) => l.id === luminaireId);
         if (luminaire) {
           selectedLuminaireId = luminaire.id;
+          serialLuminaire = luminaire.serial;
           document.getElementById("modalLuminaireName").textContent =
             luminaire.name;
           document.getElementById(
@@ -465,6 +467,43 @@
         });
       } else {
         console.warn("Nenhum dado de luminária para exibir no mapa.");
+      }
+
+      function controlLuminaire(action, value = null) {
+        if (serialLuminaire !== null) {
+          let url = "/api/state";
+          let payload = {lampSerial: serialLuminaire};
+
+          if (action === "on") {
+            payload.dimmerValue = 100; 
+          } else if (action === "off") {
+            payload.dimmerValue = 0;
+          } else if (action === "set_dimmer" && value !== null) {
+            payload.dimmerValue = parseInt(value);
+          } else {
+            alert("Ação desconhecida.");
+            return;
+          }
+
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.message) {
+                alert(data.message);
+              } else if (data.error) {
+                alert("Erro: " + data.error);
+              }
+            })
+            .catch((err) => {
+              alert("Erro na requisição: " + err);
+            });
+        } else {
+          alert("Nenhuma luminária selecionada para controle.");
+        }
       }
 
       window.onclick = function (event) {

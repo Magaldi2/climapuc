@@ -198,8 +198,42 @@ def get_mysql_data():
             connection.close()
 
 # CHAMADA DAS APIS DAS LUMINARIAS NA API DA CONTANTA
-def setdimmer(int dimmer, int )
+@app.route('/api/luminaires', methods=['GET'])
+def get_luminaires():
+    if not validar_api_login():
+        return jsonify({'error': 'Falha ao autenticar na API externa'}), 401
+    url = f"{API_URL}/luminaria"
+    headers = {
+        "Authorization": api_auth_token_full
+    }
+    params = {}
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+        response.raise_for_status()
+        luminarias = response.json()
+        return jsonify(luminarias)
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao buscar luminárias: {e}")
+        return jsonify({'error': 'Erro ao buscar luminárias'}), 500
+#def setdimmer(int dimmer, int )
 
+@app.route('/api/modem', methods=['GET'])
+def get_modems():
+    if not validar_api_login():
+        return jsonify({'error': 'Falha ao autenticar na API externa'}), 401
+    url = f"{API_URL}/modem"
+    headers = {
+        "Authorization": api_auth_token_full
+    }
+    params = {}
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+        response.raise_for_status()
+        modem = response.json()
+        return jsonify(modem)
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao buscar modems: {e}")
+        return jsonify({'error': 'Erro ao buscar modems'}), 500
 
 @app.route('/')
 def index():
@@ -333,8 +367,8 @@ def test_api_login_route():
             "token_obtido": False
         }), 500
     
-@app.route('api/setdimmer', methods = ['GET'])
-def dimmer():
+#@app.route('api/setdimmer', methods = ['GET'])
+#def dimmer():
 
 
 # Rota para gerar gráfico
@@ -414,16 +448,79 @@ def plot_data():
                            average_temperature=average_temperature,
                            max_temperature=max_temperature,
                            min_temperature=min_temperature,)
+
 @app.route('/luminaires')
 def luminaires():
-    # dados testes
-    luminaires_data = [{"id": 1, "name": "Luminaria Portaria Principal", "lat": -22.83389, "lon": -47.04544, "status": "ligada"},
-                      {"id": 2, "name": "Luminaria Biblioteca", "lat": -22.83290, "lon": -47.04471, "status": "desligada"},
-                      {"id": 3, "name": "Luminaria Praca Civica", "lat": -22.83408, "lon": -47.04319, "status": "ligada"},
-                      {"id": 4, "name": "Luminaria Estacionamento CCHSA", "lat": -22.83505, "lon": -47.04575, "status": "desligada"},
-                      {"id": 5, "name": "Luminaria Ginasio", "lat": -22.83182, "lon": -47.04225, "status": "desligada"}]
+    if not validar_api_login():
+        return render_template('luminaire.html', luminaires_data=[])
+
+    url = f"{API_URL}/luminaria"
+    headers = {"Authorization": api_auth_token_full}
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        luminaires_data = []
+        for lum in data.get("content", []):
+            try:
+                lat = float(lum.get("latitude", 0))
+                lon = float(lum.get("longitude", 0))
+            except (TypeError, ValueError):
+                lat, lon = 0, 0
+            luminaires_data.append({
+                "id": lum.get("id"),
+                "name": lum.get("nome") or lum.get("nameLuminaria") or lum.get("descricao") or f"Luminária {lum.get('id')}",
+                "lat": lat,
+                "lon": lon,
+                "status": lum.get("statusLampada") or lum.get("status") or "desconhecido",
+                "serial": lum.get("serial"),
+                "devEui": lum.get("devEui"),
+            })
+    except Exception as e:
+        print(f"Erro ao buscar luminárias reais: {e}")
+        luminaires_data = []
+
     return render_template('luminaire.html', luminaires_data=luminaires_data)
 
+@app.route('/api/state', methods=['POST'])
+def on_off_luminaire():
+    lamp_serial = flask_request.json.get('lampSerial')
+    dimmer_value = flask_request.json.get('dimmerValue')
+
+    if not lamp_serial:
+        return jsonify({"error": "lampSerial não informado"}), 400
+    if dimmer_value is None:
+        return jsonify({"error": "dimmerValue não informado"}), 400
+    
+    headers = {"Authorization": api_auth_token_full}
+    
+    url_luminaria = f"{API_URL}/luminaria/{lamp_serial}"
+    try:
+        response = requests.get(url_luminaria, headers=headers, timeout=10) 
+        response.raise_for_status()
+        if response.status_code != 200:
+            return jsonify({"error": "Luminária não encontrada"}), 404
+        
+        url = f"{API_URL}/comando/setsgiipdimmer?lampSerial={lamp_serial}&dimmerValue={dimmer_value}"
+        data = response.json()
+        lista_de_modems = data.get("listaDeModems", [])
+
+        modems = [modem["devEui"] for modem in lista_de_modems]
+        payload = {
+            "commandRequest": {},
+            "identifiers": modems
+        }
+        print(payload)
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            response.raise_for_status()
+            return jsonify({"message": "Comando enviado com sucesso!"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+            
 @app.route('/about')
 def about():
     return render_template('about.html')
