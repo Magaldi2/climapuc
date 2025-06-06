@@ -1,2 +1,3 @@
 .env
-./src/auth.json
+src/auth.json
+__pycache__

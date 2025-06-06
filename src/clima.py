@@ -1,10 +1,10 @@
 import time
-from multiprocessing import Process 
-import mqtt_handler as mqtt_handler
-from mqtt_handler import setup_mqtt
 import math
 import mysql.connector
+from flask import Blueprint, render_template, jsonify, send_from_directory
 from datetime import datetime, timedelta , timezone
+
+clima_bp = Blueprint('clima', __name__, template_folder='templates', static_folder='static')
 
 def rad_to_direction_with_icon(rad):
     """Converte radianos para direção cardeal e retorna ícone correspondente."""
@@ -117,7 +117,7 @@ def get_mysql_data():
         if connection is not None and connection.is_connected():
             connection.close()
 
-@app.route('/')
+@clima_bp.route('/')
 def index():
     current_data, previous_data = get_mysql_data()
     if not current_data:
@@ -178,7 +178,7 @@ def index():
 
 
 
-@app.route('/dados', methods=['GET'])
+@clima_bp.route('/dados', methods=['GET'])
 def dashboard():
     """Rota principal para exibir o dashboard com gráficos interativos."""
     try:
@@ -232,7 +232,7 @@ def dashboard():
 
     return render_template('dashboard.html', sensor_data=sensor_data)
 
-@app.route('/temperatura', methods=['GET'])
+@clima_bp.route('/temperatura', methods=['GET'])
 def plot_data():
     try:
         # Conexão com o MySQL
@@ -309,16 +309,7 @@ def plot_data():
                            max_temperature=max_temperature,
                            min_temperature=min_temperature,)
 
-
-
-@app.route('/about')
+@clima_bp.route('/about')
 def about():
     return render_template('about.html')
 
-# Função para rodar o MQTT em um processo separado
-def run_mqtt():
-    client = setup_mqtt()
-    if client:
-        client.loop_forever()
-    else:
-        print("Erro: Cliente MQTT não foi inicializado corretamente.")

@@ -10,7 +10,6 @@
       href="{{ url_for('static', filename='clima.png') }}"
       type="image/png"
     />
-    <!-- Pré-conexão para otimizar carregamento de ícones e fontes -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
@@ -21,7 +20,6 @@
       rel="stylesheet"
     />
     <style>
-      /* RESET */
       * {
         margin: 0;
         padding: 0;
@@ -33,6 +31,7 @@
         color: #fff;
         min-height: 100vh;
       }
+
       /* SIDEBAR */
       .sidebar {
         position: fixed;
@@ -43,8 +42,8 @@
         flex-direction: column;
         align-items: center;
         padding: 20px 0;
-        transition: transform 0.2s ease-in-out;
-        z-index: 0;
+        transition: transform 0.3s ease-in-out;
+        z-index: 10;
       }
       .sidebar.hide {
         transform: translateX(-100%);
@@ -61,8 +60,21 @@
       .sidebar .nav-item i {
         font-size: 1.8em;
       }
-      .sidebar .nav-item.who-we-are {
-        margin-top: auto;
+
+      /* CONTEÚDO PRINCIPAL */
+      .main-content {
+        /* A margem será controlada via JavaScript para garantir consistência */
+        padding: 15px;
+        transition: margin-left 0.3s ease-in-out;
+        /* A largura agora é 100%, e o box-sizing cuida do padding */
+        width: 100%;
+      }
+
+      /* Botão de Menu e Barra Superior */
+      .top-bar {
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
       }
       .menu-btn {
         background: none;
@@ -70,21 +82,6 @@
         color: #fff;
         font-size: 2em;
         cursor: pointer;
-      }
-      /* CONTEÚDO PRINCIPAL */
-      .main-content {
-        position: relative;
-        z-index: 1;
-        position: relative;
-        z-index: 0;
-        margin-left: 80px;
-        padding: 15px;
-        transition: margin-left 0.3s ease-in-out;
-      }
-      .top-bar {
-        display: flex;
-        align-items: center;
-        margin-bottom: 5px;
       }
       .top-bar h1 {
         font-size: 3em;
@@ -94,6 +91,7 @@
       .top-bar .dummy {
         width: 2.2em;
       }
+
       /* SOBRE NÓS */
       .about-list {
         display: flex;
@@ -126,33 +124,24 @@
         color: #02d7fd;
         font-size: 1.5em;
       }
-      .footer {
-        text-align: center;
-        margin-top: 20px;
-        color: #ccc;
-        font-size: 1.2em;
-      }
-      /* Responsividade */
+
       @media (max-width: 768px) {
         .member-card {
           width: calc(50% - 30px);
         }
       }
       @media (max-width: 480px) {
+        /* Em telas pequenas, a sidebar pode começar escondida e a margem ser sempre 0 */
         .main-content {
-          margin-left: 0;
+          margin-left: 0 !important;
         }
         .member-card {
           width: 100%;
         }
       }
-      .sidebar.hide + .main-content {
-        margin-left: 0;
-      }
     </style>
   </head>
   <body>
-    <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
       <div class="nav-item">
         <a href="/">
@@ -173,9 +162,18 @@
           <i class="fas fa-chart-line"></i>
         </a>
       </div>
+      <div class="nav-item">
+        <a href="/luminaires" title="Controle de Luminárias">
+          <i class="fas fa-lightbulb"></i>
+        </a>
+      </div>
+      <div class="nav-item">
+        <a href="/sensor" title="Sensores">
+          <i class="fas fa-microchip"></i>
+        </a>
+      </div>
     </aside>
 
-    <!-- CONTEÚDO PRINCIPAL -->
     <div class="main-content" id="mainContent">
       <div class="top-bar">
         <button class="menu-btn" onclick="toggleSidebarVisibility()">
@@ -185,7 +183,6 @@
         <div class="dummy"></div>
       </div>
 
-      <!-- LISTA DE MEMBROS -->
       <div class="about-list">
         <div class="member-card">
           <img
@@ -237,14 +234,35 @@
           </div>
         </div>
       </div>
-    <!-- SCRIPTS -->
+    </div>
+
     <script>
-      function toggleSidebarVisibility() {
-        const sb = document.getElementById("sidebar");
-        const mc = document.getElementById("mainContent");
-        sb.classList.toggle("hide");
-        mc.style.marginLeft = sb.classList.contains("hide") ? "0" : "80px";
+      // Função para SINCRONIZAR a margem do conteúdo com o estado da sidebar
+      function syncContentMargin() {
+        const sidebar = document.getElementById("sidebar");
+        const mainContent = document.getElementById("mainContent");
+
+        // Verifica se a sidebar está visível ou escondida
+        const isSidebarHidden = sidebar.classList.contains("hide");
+
+        // Define a margem esquerda do conteúdo principal de acordo
+        mainContent.style.marginLeft = isSidebarHidden ? "0" : "80px";
       }
+
+      // Função para MOSTRAR/ESCONDER a sidebar (chamada pelo botão)
+      function toggleSidebarVisibility() {
+        // Alterna a classe 'hide' na sidebar
+        document.getElementById("sidebar").classList.toggle("hide");
+
+        // Sincroniza a margem do conteúdo após a mudança
+        syncContentMargin();
+      }
+
+      // **A PARTE MAIS IMPORTANTE DA CORREÇÃO:**
+      // Adiciona um 'event listener' que espera o DOM (a estrutura da página)
+      // carregar completamente e então chama a função de sincronização UMA VEZ.
+      // Isso garante que o layout esteja correto no carregamento da página (F5).
+      document.addEventListener("DOMContentLoaded", syncContentMargin);
     </script>
   </body>
 </html>
