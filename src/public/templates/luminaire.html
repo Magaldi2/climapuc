@@ -305,6 +305,91 @@
         width: 90%;
       }
     }
+
+    /* Estilo principal da tabela */
+    .tabela-logs {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        font-size: 1rem;
+        background-color: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+        color: black;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Estilo do cabeçalho */
+    .tabela-logs .tabela-cabecalho th {
+        background-color: #2c3e50;
+        color: #ffffff;
+        padding: 15px 20px;
+        text-align: left;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85em;
+    }
+
+    /* Estilo das linhas e células do corpo */
+    .tabela-logs .linha-log td {
+        padding: 15px 20px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .tabela-logs .linha-log:nth-of-type(even) {
+        background-color: #f8f9fa; /* Efeito zebrado */
+    }
+
+    .tabela-logs .linha-log:hover {
+        background-color: #e9ecef; /* Efeito de hover */
+    }
+
+    .tabela-logs .linha-log:last-of-type td {
+        border-bottom: none; /* Remove a borda da última linha */
+    }
+
+
+    /* --- Estilização dos Status (Pílulas Coloridas) --- */
+
+    /* Estilo base para todas as pílulas de status */
+    .status {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 0.8em;
+        font-weight: 700;
+        color: #fff;
+        text-align: center;
+        white-space: nowrap;
+        text-transform: capitalize; /* Deixa a primeira letra maiúscula */
+    }
+
+    /* Verde para sucesso */
+    .status-finished {
+        background-color: #28a745; 
+    }
+
+    /* Azul para em progresso */
+    .status-executing {
+        background-color: #007bff;
+    }
+
+    /* Amarelo para estados de espera/agendado */
+    .status-scheduled,
+    .status-waiting {
+        background-color: #ffc107;
+        color: #212529; /* Texto escuro para melhor contraste */
+    }
+
+    /* Vermelho para falha */
+    .status-failed {
+        background-color: #dc3545;
+    }
+
+    /* Cinza para cancelado */
+    .status-cancelled {
+        background-color: #6c757d;
+    }
   </style>
 </head>
 
@@ -357,8 +442,20 @@
         <select name="" id="choose_luminaire">
           <option value="" disabled selected>Escolha uma luminária</option>
         </select>
+        <button id="refresh-button">Atualizar</button>
       </div>
-      <div id="logs"></div>
+      <table class="tabela-logs">
+        <thead class="tabela-cabecalho">
+          <tr>
+            <th>Última Atualização</th>
+            <th>Id do Ticket</th>
+            <th>Status do Ticket</th>
+            <th>Status do Comando</th>
+            <th>Comando</th>
+          </tr>
+        </thead>
+        <tbody id="logs" class="tabela-corpo"></tbody>
+      </table>
     </div>
   </div>
 
@@ -448,10 +545,21 @@
     const luminairesData = JSON.parse('{{ luminaires_data|tojson|safe }}');
     const map = L.map("map").setView([-22.83408, -47.04319], 16);
     const choose_luminaire = document.querySelector("#choose_luminaire")
+    const log_luminaire = document.querySelector("#logs")
+    const refresh_button = document.querySelector("#refresh-button")
+    let lampSelected = ""
+
+    refresh_button.addEventListener("click", (e)=>{
+      if(lampSelected == "") {
+        alert("Escolha uma lampada primeiro")
+        return;
+      }
+      fetchTickets(lampSelected)
+    })
 
     choose_luminaire.addEventListener('change', (e) => {
-      console.log(e.target.value)
       fetchTickets(e.target.value)
+      lampSelected = e.target.value
     })
 
     function fetchTickets(lampSerial) {
@@ -461,7 +569,29 @@
       })
         .then((res) => res.json())
         .then((data) => {
-          console.log(data)
+          log_luminaire.innerHTML = ""
+
+          // Encontre o elemento <tbody> da sua tabela
+          const corpoTabela = document.getElementById('logs'); // Ou o ID que você estiver usando
+          corpoTabela.innerHTML = ''; // Limpe o conteúdo antigo antes de adicionar o novo
+
+          data.content.forEach((content) => {
+              // Converte o status para minúsculas para garantir que corresponda à classe CSS
+              const statusClass = content.statusCommand.toLowerCase();
+                const dataFormatada = formatarTimestamp(content.updatedAt);
+
+              corpoTabela.innerHTML += `
+                <tr class="linha-log">
+                  <td data-label="Última Atualização">${dataFormatada}</td>
+                  <td data-label="Id do Ticket">${content.id}</td>
+                  <td data-label="Status do Ticket">${content.ticketStatus}</td>
+                  
+                  <td data-label="Status do Comando">${content.statusCommand}</td>
+
+                  <td data-label="Comando">${content.commandType}</td>
+                </tr>
+              `;
+          });
         })
         .catch((err) => {
           alert("Erro na requisição: " + err);
@@ -553,6 +683,27 @@
         closeConfigModal();
       }
     };
+
+    function formatarTimestamp(timestamp) {
+      // O JavaScript espera o timestamp em milissegundos.
+      // Se o timestamp for um número e tiver 10 dígitos, é provável que esteja em segundos.
+      if (typeof timestamp === 'number' && timestamp.toString().length === 10) {
+        timestamp = timestamp * 1000;
+      }
+
+      const data = new Date(timestamp);
+
+      // Pega cada parte da data/hora
+      const dia = String(data.getDate()).padStart(2, '0');
+      const mes = String(data.getMonth() + 1).padStart(2, '0'); // Mês começa em 0, então somamos 1
+      const ano = data.getFullYear();
+      const horas = String(data.getHours()).padStart(2, '0');
+      const minutos = String(data.getMinutes()).padStart(2, '0');
+      const segundos = String(data.getSeconds()).padStart(2, '0');
+
+      // Retorna a string montada
+      return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
+    }
   </script>
 </body>
 
