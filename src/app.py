@@ -29,6 +29,7 @@ app.register_blueprint(clima_bp)
 API_URL = os.getenv("API_URL")
 API_USERNAME = os.getenv("API_USERNAME")
 API_PASSWORD = os.getenv("API_PASSWORD")
+AUTH_JSON = "src/auth.json"
 
 
 api_auth_token_full = None
@@ -45,14 +46,15 @@ def validar_api_login():
         return True
     
     # Verifica se tem salvo
-    with open('src/auth.json', 'r') as file:
-        data = json.load(file)
-        print("Leu json")
-        if data['token'] and data['expiresIn'] and (data['expiresIn'] > (time.time() + 60)):
-            api_auth_token_full = data['token']
-            token_expiration_time = data['expiresIn']
-            print(f"Usando token existente (JSON). Válido até: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(token_expiration_time))}")
-            return True
+    if os.path.exists(AUTH_JSON):
+        with open('src/auth.json', 'r') as file:
+            data = json.load(file)
+            print("Leu json")
+            if data['token'] and data['expiresIn'] and (data['expiresIn'] > (time.time() + 60)):
+                api_auth_token_full = data['token']
+                token_expiration_time = data['expiresIn']
+                print(f"Usando token existente (JSON). Válido até: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(token_expiration_time))}")
+                return True
 
     print(f"Token nao encontrado ou expirado. Realizando login em {API_URL}")
     login_url = f"{API_URL}/login"
@@ -85,7 +87,7 @@ def validar_api_login():
             print(f"Token (início): {api_auth_token_full[:15]}...")
             print(f"Expira em: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(token_expiration_time))}")
 
-            with open('src/auth.json', 'w') as file:
+            with open(AUTH_JSON, 'w') as file:
                 data = {
                     "expiresIn": token_expiration_time,
                     "token": api_auth_token_full,
@@ -119,6 +121,32 @@ def get_luminaires():
     if not validar_api_login():
         return jsonify({'error': 'Falha ao autenticar na API externa'}), 401
     url = f"{API_URL}/luminaria"
+    headers = {
+        "Authorization": api_auth_token_full
+    }
+    params = {}
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+        response.raise_for_status()
+        luminarias = response.json()
+        return jsonify(luminarias)
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao buscar luminárias: {e}")
+        return jsonify({'error': 'Erro ao buscar luminárias'}), 500
+    
+@app.route('/api/luminaires/tickets', methods=["GET"])
+def get_luminaires_tickets():
+    if not validar_api_login():
+        return jsonify({'error': 'Falha ao autenticar na API externa'}), 401
+    lamp_serial = flask_request.args.get('lampSerial')
+    size = flask_request.args.get('size', 10)
+    page = flask_request.args.get('page', 0)
+    # status = flask_request.args.get('status', True)
+
+    if not lamp_serial:
+        return jsonify({"error": "lampSerial não informado"}), 400
+    
+    url = f"{API_URL}/tickets-gelumini/luminaria?serial={lamp_serial}&size={size}&page={page}&status="
     headers = {
         "Authorization": api_auth_token_full
     }

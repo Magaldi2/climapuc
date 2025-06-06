@@ -9,6 +9,7 @@ load_dotenv()
 API_URL = os.getenv("API_URL")
 API_USERNAME = os.getenv("API_USERNAME")
 API_PASSWORD = os.getenv("API_PASSWORD")
+AUTH_JSON = "src/auth.json"
 
 def validar_api_login():
     global api_auth_token_full, token_expiration_time
@@ -19,14 +20,15 @@ def validar_api_login():
         return True
     
     # Verifica se tem salvo
-    with open('src/auth.json', 'r') as file:
-        data = json.load(file)
-        print("Leu json")
-        if data['token'] and data['expiresIn'] and (data['expiresIn'] > (time.time() + 60)):
-            api_auth_token_full = data['token']
-            token_expiration_time = data['expiresIn']
-            print(f"Usando token existente (JSON). Válido até: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(token_expiration_time))}")
-            return True
+    if os.path.exists(AUTH_JSON):
+        with open(AUTH_JSON, 'r') as file:
+            data = json.load(file)
+            print("Leu json")
+            if data['token'] and data['expiresIn'] and (data['expiresIn'] > (time.time() + 60)):
+                api_auth_token_full = data['token']
+                token_expiration_time = data['expiresIn']
+                print(f"Usando token existente (JSON). Válido até: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(token_expiration_time))}")
+                return True
 
     print(f"Token nao encontrado ou expirado. Realizando login em {API_URL}")
     login_url = f"{API_URL}/login"
@@ -59,7 +61,7 @@ def validar_api_login():
             print(f"Token (início): {api_auth_token_full[:15]}...")
             print(f"Expira em: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(token_expiration_time))}")
 
-            with open('src/auth.json', 'w') as file:
+            with open(AUTH_JSON, 'w') as file:
                 data = {
                     "expiresIn": token_expiration_time,
                     "token": api_auth_token_full,
