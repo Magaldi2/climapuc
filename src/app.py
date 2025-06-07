@@ -132,6 +132,25 @@ def get_luminaires():
         print(f"Erro ao buscar luminárias: {e}")
         return jsonify({'error': 'Erro ao buscar luminárias'}), 500
 
+
+@app.route('/api/dimmerhistory', methods=['GET'])
+def get_dimmer():
+    if not validar_api_login():
+        return jsonify({'error': 'Falha ao autenticar na API externa'}), 401
+    url = f"{API_URL}/historico/dimmer"
+    headers = {
+        "Authorization": api_auth_token_full
+    }
+    params = {}
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+        response.raise_for_status()
+        dimmer = response.json()
+        return jsonify(dimmer)
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao buscar luminárias: {e}")
+        return jsonify({'error': 'Erro ao buscar luminárias'}), 500
+
 @app.route('/api/modem', methods=['GET'])
 def get_modems():
     if not validar_api_login():
@@ -149,8 +168,7 @@ def get_modems():
     except requests.exceptions.RequestException as e:
         print(f"Erro ao buscar modems: {e}")
         return jsonify({'error': 'Erro ao buscar modems'}), 500
-
-
+    
 @app.route('/luminaires')
 def luminaires():
     if not validar_api_login():
@@ -177,6 +195,7 @@ def luminaires():
                 "status": lum.get("statusLampada") or lum.get("status") or "desconhecido",
                 "serial": lum.get("serial"),
                 "devEui": lum.get("devEui"),
+                "dimmerValue": lum.get("dimmerValue"),
             })
     except Exception as e:
         print(f"Erro ao buscar luminárias reais: {e}")

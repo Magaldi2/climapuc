@@ -333,7 +333,7 @@
       </div>
       <div id="map"></div>
       <div id="logs-table">
-          <h1>Registro dos Tokens</h1>
+        <h1>Registro dos Tokens</h1>
       </div>
     </div>
 
@@ -385,6 +385,7 @@
 
       let selectedLuminaireId = null;
       let serialLuminaire = null;
+      let dimmerValue = null;
 
       function updateDimmerValueDisplay(value) {
         document.getElementById("dimmerValueDisplay").textContent = value;
@@ -395,41 +396,93 @@
         if (luminaire) {
           selectedLuminaireId = luminaire.id;
           serialLuminaire = luminaire.serial;
+
           document.getElementById("modalLuminaireName").textContent =
             luminaire.name;
           document.getElementById(
             "modalLuminaireStatus"
           ).textContent = `Status: ${luminaire.status || "N/A"}`;
 
-          // Define o valor inicial do slider e atualiza o display
-          // (Assumindo que 'luminaire.dimmer_level' poderia vir dos dados no futuro, caso contrário, usa o valor padrão do HTML)
-          const currentDimmerLevel =
-            luminaire.dimmer_level !== undefined
-              ? luminaire.dimmer_level
-              : document.getElementById("dimmerSlider").value;
-          document.getElementById("dimmerSlider").value = currentDimmerLevel;
-          updateDimmerValueDisplay(currentDimmerLevel);
+          // Buscar valor real da API antes de abrir o modal
+          fetch(`/api/luminaires?id=${luminaire.id}`)
+            .then((res) => res.json())
+            .then((data) => {
+              // Aqui você pega o valor real do dimmer da API
+              const realLum = Array.isArray(data) ? data[0] : data;
+              const currentDimmerLevel =
+                realLum && realLum.dimmer_level !== undefined
+                  ? realLum.dimmer_level
+                  : 50; // valor padrão se não vier da API
 
-          document.getElementById("configModal").style.display = "block";
+              document.getElementById("dimmerSlider").value =
+                currentDimmerLevel;
+              updateDimmerValueDisplay(currentDimmerLevel);
+
+              document.getElementById("configModal").style.display = "block";
+            })
+            .catch(() => {
+              // fallback para valor local se a API falhar
+              const currentDimmerLevel =
+                luminaire.dimmer_level !== undefined
+                  ? luminaire.dimmer_level
+                  : document.getElementById("dimmerSlider").value;
+              document.getElementById("dimmerSlider").value =
+                currentDimmerLevel;
+              updateDimmerValueDisplay(currentDimmerLevel);
+
+              document.getElementById("configModal").style.display = "block";
+            });
         }
       }
-
       function closeConfigModal() {
         document.getElementById("configModal").style.display = "none";
       }
 
       function controlLuminaire(action, value = null) {
-        // Adicionado 'value' para o dimmer
-        if (selectedLuminaireId !== null) {
-          let message = `Ação: ${action}`;
-          if (action === "set_dimmer" && value !== null) {
-            message += ` para ${value}%`;
-            // Aqui você também pode querer atualizar o 'luminaire.status' ou 'luminaire.dimmer_level'
-            // no objeto 'luminairesData' e talvez o '#modalLuminaireStatus'
-            // Ex: document.getElementById('modalLuminaireStatus').textContent = `Status: Dimmer em ${value}%`;
+        if (serialLuminaire !== null) {
+          let url = "/api/state";
+          let payload = { lampSerial: serialLuminaire };
+
+          if (action === "on") {
+            payload.dimmerValue = 100;
+            // Atualiza o objeto da luminária
+            const lum = luminairesData.find(
+              (l) => l.serial === serialLuminaire
+            );
+            if (lum) lum.dimmer_level = 100;
+          } else if (action === "off") {
+            payload.dimmerValue = 0;
+            const lum = luminairesData.find(
+              (l) => l.serial === serialLuminaire
+            );
+            if (lum) lum.dimmer_level = 0;
+          } else if (action === "set_dimmer" && value !== null) {
+            payload.dimmerValue = parseInt(value);
+            const lum = luminairesData.find(
+              (l) => l.serial === serialLuminaire
+            );
+            if (lum) lum.dimmer_level = parseInt(value);
+          } else {
+            alert("Ação desconhecida.");
+            return;
           }
-          message += ` na Luminária ID: ${selectedLuminaireId}\n(Integração com API externa pendente)`;
-          alert(message);
+
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.message) {
+                alert(data.message);
+              } else if (data.error) {
+                alert("Erro: " + data.error);
+              }
+            })
+            .catch((err) => {
+              alert("Erro na requisição: " + err);
+            });
         } else {
           alert("Nenhuma luminária selecionada para controle.");
         }
@@ -438,8 +491,9 @@
       const luminairesData = JSON.parse('{{ luminaires_data|tojson|safe }}');
       const map = L.map("map").setView([-22.83408, -47.04319], 16);
 
+
       L.tileLayer(
-        "https://api.maptiler.com/maps/dataviz/{z}/{x}/{y}.png?key=RZXpb9LpxsGCRktNA6mT",
+        "https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=RZXpb9LpxsGCRktNA6mT",
         {
           attribution:
             '&copy; <a href="https://www.maptiler.com/">MapTiler</a> & <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
@@ -449,6 +503,7 @@
           maxZoom: 20,
         }
       ).addTo(map);
+
 
       if (luminairesData && luminairesData.length > 0) {
         luminairesData.forEach((luminaire) => {
@@ -482,10 +537,10 @@
       function controlLuminaire(action, value = null) {
         if (serialLuminaire !== null) {
           let url = "/api/state";
-          let payload = {lampSerial: serialLuminaire};
+          let payload = { lampSerial: serialLuminaire };
 
           if (action === "on") {
-            payload.dimmerValue = 100; 
+            payload.dimmerValue = 100;
           } else if (action === "off") {
             payload.dimmerValue = 0;
           } else if (action === "set_dimmer" && value !== null) {
