@@ -403,37 +403,19 @@
             "modalLuminaireStatus"
           ).textContent = `Status: ${luminaire.status || "N/A"}`;
 
-          // Buscar valor real da API antes de abrir o modal
-          fetch(`/api/luminaires?id=${luminaire.id}`)
-            .then((res) => res.json())
-            .then((data) => {
-              // Aqui você pega o valor real do dimmer da API
-              const realLum = Array.isArray(data) ? data[0] : data;
-              const currentDimmerLevel =
-                realLum && realLum.dimmer_level !== undefined
-                  ? realLum.dimmer_level
-                  : 50; // valor padrão se não vier da API
+          // Aqui pega o valor do dimmer da luminária e seta no slider
+          const currentDimmerLevel =
+            luminaire.dimmer !== undefined && luminaire.dimmer !== null
+              ? luminaire.dimmer
+              : 50; // valor padrão se não houver
 
-              document.getElementById("dimmerSlider").value =
-                currentDimmerLevel;
-              updateDimmerValueDisplay(currentDimmerLevel);
+          document.getElementById("dimmerSlider").value = currentDimmerLevel;
+          updateDimmerValueDisplay(currentDimmerLevel);
 
-              document.getElementById("configModal").style.display = "block";
-            })
-            .catch(() => {
-              // fallback para valor local se a API falhar
-              const currentDimmerLevel =
-                luminaire.dimmer_level !== undefined
-                  ? luminaire.dimmer_level
-                  : document.getElementById("dimmerSlider").value;
-              document.getElementById("dimmerSlider").value =
-                currentDimmerLevel;
-              updateDimmerValueDisplay(currentDimmerLevel);
-
-              document.getElementById("configModal").style.display = "block";
-            });
+          document.getElementById("configModal").style.display = "block";
         }
       }
+
       function closeConfigModal() {
         document.getElementById("configModal").style.display = "none";
       }
@@ -491,7 +473,6 @@
       const luminairesData = JSON.parse('{{ luminaires_data|tojson|safe }}');
       const map = L.map("map").setView([-22.83408, -47.04319], 16);
 
-
       L.tileLayer(
         "https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=RZXpb9LpxsGCRktNA6mT",
         {
@@ -504,15 +485,20 @@
         }
       ).addTo(map);
 
-
       if (luminairesData && luminairesData.length > 0) {
         luminairesData.forEach((luminaire) => {
           const marker = L.marker([luminaire.lat, luminaire.lon]).addTo(map);
+          let statusText = "Desconhecido";
+          if (luminaire.statusLampada === "ON" || luminaire.statusLampada === "1") {
+            statusText = "<span style='color:green;'>Acesa</span>";
+          } else if (luminaire.statusLampada === "OFF" || luminaire.statusLampada === "0") {
+            statusText = "<span style='color:red;'>Desligada</span>";
+          } else if (luminaire.statusLampada) {
+            statusText = luminaire.statusLampada;
+          }
 
           marker.bindTooltip(
-            `<strong>${luminaire.name}</strong><br>ID: ${
-              luminaire.id
-            }<br>Status: ${luminaire.status || "N/A"}`,
+            `<strong>${luminaire.name}</strong><br>ID: ${luminaire.id}<br>Status: ${statusText}`,
             {
               direction: "top",
               offset: L.point(
