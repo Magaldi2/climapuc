@@ -308,44 +308,47 @@
 
     /* Estilo principal da tabela */
     .tabela-logs {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 20px 0;
-        font-size: 1rem;
-        background-color: #ffffff;
-        border-radius: 8px;
-        overflow: hidden;
-        color: black;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 1rem;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      color: black;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
     }
 
     /* Estilo do cabeçalho */
     .tabela-logs .tabela-cabecalho th {
-        background-color: #2c3e50;
-        color: #ffffff;
-        padding: 15px 20px;
-        text-align: left;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 0.85em;
+      background-color: #2c3e50;
+      color: #ffffff;
+      padding: 15px 20px;
+      text-align: left;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.85em;
     }
 
     /* Estilo das linhas e células do corpo */
     .tabela-logs .linha-log td {
-        padding: 15px 20px;
-        border-bottom: 1px solid #e0e0e0;
+      padding: 15px 20px;
+      border-bottom: 1px solid #e0e0e0;
     }
 
     .tabela-logs .linha-log:nth-of-type(even) {
-        background-color: #f8f9fa; /* Efeito zebrado */
+      background-color: #f8f9fa;
+      /* Efeito zebrado */
     }
 
     .tabela-logs .linha-log:hover {
-        background-color: #e9ecef; /* Efeito de hover */
+      background-color: #e9ecef;
+      /* Efeito de hover */
     }
 
     .tabela-logs .linha-log:last-of-type td {
-        border-bottom: none; /* Remove a borda da última linha */
+      border-bottom: none;
+      /* Remove a borda da última linha */
     }
 
 
@@ -353,42 +356,44 @@
 
     /* Estilo base para todas as pílulas de status */
     .status {
-        display: inline-block;
-        padding: 5px 12px;
-        border-radius: 15px;
-        font-size: 0.8em;
-        font-weight: 700;
-        color: #fff;
-        text-align: center;
-        white-space: nowrap;
-        text-transform: capitalize; /* Deixa a primeira letra maiúscula */
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 0.8em;
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+      white-space: nowrap;
+      text-transform: capitalize;
+      /* Deixa a primeira letra maiúscula */
     }
 
     /* Verde para sucesso */
     .status-finished {
-        background-color: #28a745; 
+      background-color: #28a745;
     }
 
     /* Azul para em progresso */
     .status-executing {
-        background-color: #007bff;
+      background-color: #007bff;
     }
 
     /* Amarelo para estados de espera/agendado */
     .status-scheduled,
     .status-waiting {
-        background-color: #ffc107;
-        color: #212529; /* Texto escuro para melhor contraste */
+      background-color: #ffc107;
+      color: #212529;
+      /* Texto escuro para melhor contraste */
     }
 
     /* Vermelho para falha */
     .status-failed {
-        background-color: #dc3545;
+      background-color: #dc3545;
     }
 
     /* Cinza para cancelado */
     .status-cancelled {
-        background-color: #6c757d;
+      background-color: #6c757d;
     }
   </style>
 </head>
@@ -471,10 +476,9 @@
         <input type="range" id="dimmerSlider" min="0" max="100" value="50" class="dimmer-slider"
           oninput="updateDimmerValueDisplay(this.value)" onchange="controlLuminaire('set_dimmer', this.value)" />
       </div>
-      <hr />
-      <div class="modal-controls">
-        <button onclick="controlLuminaire('on')">Ligar</button>
-        <button onclick="controlLuminaire('off')">Desligar</button>
+      <div id="map"></div>
+      <div id="logs-table">
+        <h1>Registro dos Tokens</h1>
       </div>
     </div>
   </div>
@@ -492,6 +496,11 @@
 
     let selectedLuminaireId = null;
     let serialLuminaire = null;
+    let dimmerValue = null;
+    const choose_luminaire = document.querySelector("#choose_luminaire")
+    const log_luminaire = document.querySelector("#logs")
+    const refresh_button = document.querySelector("#refresh-button")
+    let lampSelected = ""
 
     function updateDimmerValueDisplay(value) {
       document.getElementById("dimmerValueDisplay").textContent = value;
@@ -521,22 +530,85 @@
       }
     }
 
+
+    function updateDimmerValueDisplay(value) {
+      document.getElementById("dimmerValueDisplay").textContent = value;
+    }
+
+    function prepareAndOpenConfigModal(luminaireId) {
+      const luminaire = luminairesData.find((l) => l.id === luminaireId);
+      if (luminaire) {
+        selectedLuminaireId = luminaire.id;
+        serialLuminaire = luminaire.serial;
+
+        document.getElementById("modalLuminaireName").textContent =
+          luminaire.name;
+        document.getElementById(
+          "modalLuminaireStatus"
+        ).textContent = `Status: ${luminaire.status || "N/A"}`;
+
+        // Aqui pega o valor do dimmer da luminária e seta no slider
+        const currentDimmerLevel =
+          luminaire.dimmer !== undefined && luminaire.dimmer !== null
+            ? luminaire.dimmer
+            : 50; // valor padrão se não houver
+
+        document.getElementById("dimmerSlider").value = currentDimmerLevel;
+        updateDimmerValueDisplay(currentDimmerLevel);
+
+        document.getElementById("configModal").style.display = "block";
+      }
+    }
+
     function closeConfigModal() {
       document.getElementById("configModal").style.display = "none";
     }
 
     function controlLuminaire(action, value = null) {
-      // Adicionado 'value' para o dimmer
-      if (selectedLuminaireId !== null) {
-        let message = `Ação: ${action}`;
-        if (action === "set_dimmer" && value !== null) {
-          message += ` para ${value}%`;
-          // Aqui você também pode querer atualizar o 'luminaire.status' ou 'luminaire.dimmer_level'
-          // no objeto 'luminairesData' e talvez o '#modalLuminaireStatus'
-          // Ex: document.getElementById('modalLuminaireStatus').textContent = `Status: Dimmer em ${value}%`;
+      if (serialLuminaire !== null) {
+        let url = "/api/state";
+        let payload = { lampSerial: serialLuminaire };
+
+        if (action === "on") {
+          payload.dimmerValue = 100;
+          // Atualiza o objeto da luminária
+          const lum = luminairesData.find(
+            (l) => l.serial === serialLuminaire
+          );
+          if (lum) lum.dimmer_level = 100;
+        } else if (action === "off") {
+          payload.dimmerValue = 0;
+          const lum = luminairesData.find(
+            (l) => l.serial === serialLuminaire
+          );
+          if (lum) lum.dimmer_level = 0;
+        } else if (action === "set_dimmer" && value !== null) {
+          payload.dimmerValue = parseInt(value);
+          const lum = luminairesData.find(
+            (l) => l.serial === serialLuminaire
+          );
+          if (lum) lum.dimmer_level = parseInt(value);
+        } else {
+          alert("Ação desconhecida.");
+          return;
         }
-        message += ` na Luminária ID: ${selectedLuminaireId}\n(Integração com API externa pendente)`;
-        alert(message);
+
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.message) {
+              alert(data.message);
+            } else if (data.error) {
+              alert("Erro: " + data.error);
+            }
+          })
+          .catch((err) => {
+            alert("Erro na requisição: " + err);
+          });
       } else {
         alert("Nenhuma luminária selecionada para controle.");
       }
@@ -544,13 +616,59 @@
 
     const luminairesData = JSON.parse('{{ luminaires_data|tojson|safe }}');
     const map = L.map("map").setView([-22.83408, -47.04319], 16);
-    const choose_luminaire = document.querySelector("#choose_luminaire")
-    const log_luminaire = document.querySelector("#logs")
-    const refresh_button = document.querySelector("#refresh-button")
-    let lampSelected = ""
 
-    refresh_button.addEventListener("click", (e)=>{
-      if(lampSelected == "") {
+    L.tileLayer(
+      "https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=RZXpb9LpxsGCRktNA6mT",
+      {
+        attribution:
+          '&copy; <a href="https://www.maptiler.com/">MapTiler</a> & <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+        tileSize: 512,
+        zoomOffset: -1,
+        minZoom: 1,
+        maxZoom: 20,
+      }
+    ).addTo(map);
+
+    if (luminairesData && luminairesData.length > 0) {
+      luminairesData.forEach((luminaire) => {
+        const marker = L.marker([luminaire.lat, luminaire.lon]).addTo(map);
+        let statusText = "Desconhecido";
+        if (luminaire.statusLampada === "ON" || luminaire.statusLampada === "1") {
+          statusText = "<span style='color:green;'>Acesa</span>";
+        } else if (luminaire.statusLampada === "OFF" || luminaire.statusLampada === "0") {
+          statusText = "<span style='color:red;'>Desligada</span>";
+        } else if (luminaire.statusLampada) {
+          statusText = luminaire.statusLampada;
+        }
+
+        marker.bindTooltip(
+          `<strong>${luminaire.name}</strong><br>ID: ${luminaire.id}<br>Status: ${statusText}`,
+          {
+            direction: "top",
+            offset: L.point(
+              0,
+              -(marker.options.icon.options.iconSize
+                ? marker.options.icon.options.iconSize[1] / 2
+                : 20)
+            ),
+            permanent: false,
+            sticky: true,
+          }
+        );
+
+        marker.on("click", function () {
+          prepareAndOpenConfigModal(luminaire.id);
+        });
+        choose_luminaire.innerHTML += `<option value="${luminaire.serial}">${luminaire.name}</option>`
+
+      });
+    } else {
+      alert("Nenhuma luminária selecionada para controle.");
+    }
+
+
+    refresh_button.addEventListener("click", (e) => {
+      if (lampSelected == "") {
         alert("Escolha uma lampada primeiro")
         return;
       }
@@ -576,11 +694,11 @@
           corpoTabela.innerHTML = ''; // Limpe o conteúdo antigo antes de adicionar o novo
 
           data.content.forEach((content) => {
-              // Converte o status para minúsculas para garantir que corresponda à classe CSS
-              const statusClass = content.statusCommand.toLowerCase();
-                const dataFormatada = formatarTimestamp(content.updatedAt);
+            // Converte o status para minúsculas para garantir que corresponda à classe CSS
+            const statusClass = content.statusCommand.toLowerCase();
+            const dataFormatada = formatarTimestamp(content.updatedAt);
 
-              corpoTabela.innerHTML += `
+            corpoTabela.innerHTML += `
                 <tr class="linha-log">
                   <td data-label="Última Atualização">${dataFormatada}</td>
                   <td data-label="Id do Ticket">${content.id}</td>
@@ -596,85 +714,6 @@
         .catch((err) => {
           alert("Erro na requisição: " + err);
         });
-    }
-
-    L.tileLayer(
-      "https://api.maptiler.com/maps/dataviz/{z}/{x}/{y}.png?key=RZXpb9LpxsGCRktNA6mT",
-      {
-        attribution:
-          '&copy; <a href="https://www.maptiler.com/">MapTiler</a> & <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
-        tileSize: 512,
-        zoomOffset: -1,
-        minZoom: 1,
-        maxZoom: 20,
-      }
-    ).addTo(map);
-
-    if (luminairesData && luminairesData.length > 0) {
-      luminairesData.forEach((luminaire) => {
-        const marker = L.marker([luminaire.lat, luminaire.lon]).addTo(map);
-
-        marker.bindTooltip(
-          `<strong>${luminaire.name}</strong><br>ID: ${luminaire.id
-          }<br>Status: ${luminaire.status || "N/A"}`,
-          {
-            direction: "top",
-            offset: L.point(
-              0,
-              -(marker.options.icon.options.iconSize
-                ? marker.options.icon.options.iconSize[1] / 2
-                : 20)
-            ),
-            permanent: false,
-            sticky: true,
-          }
-        );
-
-        marker.on("click", function () {
-          prepareAndOpenConfigModal(luminaire.id);
-        });
-        // Insere no select
-        choose_luminaire.innerHTML += `<option value="${luminaire.serial}">${luminaire.name}</option>`
-      });
-    } else {
-      console.warn("Nenhum dado de luminária para exibir no mapa.");
-    }
-
-    function controlLuminaire(action, value = null) {
-      if (serialLuminaire !== null) {
-        let url = "/api/state";
-        let payload = { lampSerial: serialLuminaire };
-
-        if (action === "on") {
-          payload.dimmerValue = 100;
-        } else if (action === "off") {
-          payload.dimmerValue = 0;
-        } else if (action === "set_dimmer" && value !== null) {
-          payload.dimmerValue = parseInt(value);
-        } else {
-          alert("Ação desconhecida.");
-          return;
-        }
-
-        fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.message) {
-              alert(data.message);
-            } else if (data.error) {
-              alert("Erro: " + data.error);
-            }
-          })
-          .catch((err) => {
-            alert("Erro na requisição: " + err);
-          });
-      } else {
-        alert("Nenhuma luminária selecionada para controle.");
-      }
     }
 
     window.onclick = function (event) {

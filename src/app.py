@@ -160,6 +160,35 @@ def get_luminaires_tickets():
         print(f"Erro ao buscar luminárias: {e}")
         return jsonify({'error': 'Erro ao buscar luminárias'}), 500
 
+
+@app.route('/api/dimmerhistory', methods=['GET'])
+def get_dimmer():
+    if not validar_api_login():
+        return jsonify({'error': 'Falha ao autenticar na API externa'}), 401
+    luminaire_id = flask_request.args.get('id')
+    if not luminaire_id:
+        return jsonify({'error': 'Nao achei o Id da luminaira'}), 400
+    
+    url = f"{API_URL}/historico/dimmer"
+    headers = {
+        "Authorization": api_auth_token_full
+    }
+    params = {
+        "id": luminaire_id,
+        "size": 1,
+        "page": 0,
+        "sort": "dtAtualizacao,desc"
+    }
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+        response.raise_for_status()
+        dimmer = response.json()
+        content = dimmer.get("content", [])
+        return jsonify(content[0])
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao buscar luminárias: {e}")
+        return jsonify({'error': 'Erro ao buscar luminárias'}), 500
+
 @app.route('/api/modem', methods=['GET'])
 def get_modems():
     if not validar_api_login():
@@ -177,8 +206,7 @@ def get_modems():
     except requests.exceptions.RequestException as e:
         print(f"Erro ao buscar modems: {e}")
         return jsonify({'error': 'Erro ao buscar modems'}), 500
-
-
+    
 @app.route('/luminaires')
 def luminaires():
     if not validar_api_login():
@@ -190,21 +218,51 @@ def luminaires():
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
+
+        # Modems data
+        modem_url = f"{API_URL}/modem"
+        modem_response = requests.get(modem_url, headers=headers, timeout=10)
+        modem_response.raise_for_status()
+        modems_data = modem_response.json()
+
+        # Acha o valor do dimmer pelo devEui
+        dimmer_by_devEui = {}
+        statusBydevEui = {}
+        for modem in modems_data.get("content", []):
+            deveui = modem.get("devEui")
+            dimmer = modem.get("dimmer")
+            statusLampada = modem.get("statusLampada")
+            if deveui and dimmer is not None:
+                dimmer_by_devEui[deveui] = dimmer
+            if deveui and statusLampada is not None:
+                statusBydevEui[deveui] = statusLampada
         luminaires_data = []
         for lum in data.get("content", []):
+            dimmer = None
+            dev_eui = None
+            for modem in lum.get("listaDeModems", []):
+                deveui = modem.get("devEui")
+                if deveui in dimmer_by_devEui:
+                    dimmer = dimmer_by_devEui[deveui]
+                    dev_eui = deveui 
+                    statusLampada = statusBydevEui.get(deveui, "desconhecido")
+                    break
             try:
                 lat = float(lum.get("latitude", 0))
                 lon = float(lum.get("longitude", 0))
             except (TypeError, ValueError):
                 lat, lon = 0, 0
+
             luminaires_data.append({
                 "id": lum.get("id"),
                 "name": lum.get("nome") or lum.get("nameLuminaria") or lum.get("descricao") or f"Luminária {lum.get('id')}",
                 "lat": lat,
                 "lon": lon,
-                "status": lum.get("statusLampada") or lum.get("status") or "desconhecido",
                 "serial": lum.get("serial"),
-                "devEui": lum.get("devEui"),
+                "devEui": dev_eui,
+                "dimmer": dimmer,
+                "statusLampada" : statusLampada,
+                "status": lum.get("status"),
             })
     except Exception as e:
         print(f"Erro ao buscar luminárias reais: {e}")
@@ -214,7 +272,7 @@ def luminaires():
 
 @app.route('/api/state', methods=['POST'])
 def on_off_luminaire():
-    auth_success = validar_api_login() # Chama sua função de login
+    auth_success = validar_api_login()
     if not auth_success:
         return jsonify({
             "message": "Teste de login na API externa: FALHOU!",
@@ -264,13 +322,13 @@ def on_off_luminaire():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+# Rotas do sensor de TEMP, HUM, e CO2
 @app.route('/static/data/<filename>')
 def get_csv(filename):
     base_path = os.path.abspath(os.path.dirname(__file__))
     data_path = os.path.join(base_path, 'public', 'static', 'data')
     return send_from_directory(data_path, filename)
-
-
 @app.route('/sensor')
 def sensor_data():
     return render_template('sensor.html')
