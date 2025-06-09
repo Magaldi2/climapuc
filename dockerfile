@@ -17,6 +17,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # script de monitoramento
 RUN apk add --no-cache bash mysql-client docker-cli
+
 COPY monitor.sh /monitor.sh
 RUN chmod +x /monitor.sh
 
