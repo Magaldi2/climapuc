@@ -1,5 +1,0 @@
-.env
-auth.json
-**/auth.json
-__pycache__/
-**/__pycache__/
