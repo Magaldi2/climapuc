@@ -152,12 +152,48 @@
         font-size: 10em;
         margin: 0;
       }
-      .current-weather .temperature-status {
-        font-size: 2em;
-        margin-bottom: 10px;
-        text-align: center;
+
+      .min-max-temp {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        margin-top: 5px;
+        font-size: 1.2em;
         color: rgba(255, 255, 255, 0.8);
       }
+      .min-max-temp span {
+        font-weight: 300;
+      }
+
+      .weather-details {
+        display: flex;
+        justify-content: space-between;
+        gap: 15px;
+        margin-top: 25px;
+        width: 100%;
+        padding: 20px;
+        border-radius: 15px;
+        background-color: #2a3550;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      }
+
+      .temperature-status {
+        font-size: 1.8em;
+        margin-top: 10px;
+        color: rgba(255, 255, 255, 0.8);
+        text-align: center;
+      }
+      .min-max-temp {
+        display: flex;
+        gap: 25px;
+        margin-top: 8px;
+        font-size: 1.2em;
+        color: rgba(255, 255, 255, 0.8);
+      }
+      .min-max-temp span {
+        font-weight: 300;
+      }
+
       /* CARDS DE CONDIÇÕES */
       .conditions {
         display: flex;
@@ -196,6 +232,7 @@
         color: #ccc;
         font-size: 1.5em;
       }
+
       /* RESPONSIVIDADE */
       @media (max-width: 768px) {
         .top-bar h1 {
@@ -290,7 +327,13 @@
         <h2 class="temperature" data-temp="{{ temperature }}">
           {{ '%.f'|format(temperature) }}°C
         </h2>
-        <p class="temperature-status">{{ temperature_status }}</p>
+        <div class="min-max-temp">
+          <span>Mín: {{ '%.f'|format(min_temp) }}°</span>
+          <span>Máx: {{ '%.f'|format(max_temp) }}°</span>
+        </div>
+          <p class="temperature-status">
+            Sens. térmica de {{ '%.f'|format(feels_like_temp) }}°
+          </p>
       </div>
 
       <!-- CARDS DE CONDIÇÕES -->
@@ -300,6 +343,12 @@
           <h3>Umidade</h3>
           <p>{{ '%.f'|format(humidity) }}%</p>
           <p class="legend">{{ humidity_status }}</p>
+        </div>
+        <div class="condition-card">
+          <i class="fas fa-cloud-rain" style="color: #ffd700"></i>
+          <h3>Chance de Chuva</h3>
+          <p id="rain-chance-value">--%</p>
+          <p class="legend" id="rain-chance-status">Calculando...</p>
         </div>
         <div class="condition-card">
           <i class="fas fa-cloud-showers-heavy" style="color: #ffd700"></i>
@@ -324,7 +373,8 @@
       <!-- RODAPÉ -->
       <div class="footer">
         <p>
-          Desenvolvido por <a href="/about" style="color: #ffd700">alunos</a> da
+          Desenvolvido por
+          <a href="/about" style="color: #ffd700">alunos</a> da
           <strong>PUCCAMP</strong>. Todos os direitos reservados.
         </p>
       </div>
@@ -343,12 +393,47 @@
           el.setAttribute("data-temp", conv.toFixed(1));
         });
       }
+      async function fetchRainChance() {
+        const valueElement = document.getElementById("rain-chance-value");
+        const statusElement = document.getElementById("rain-chance-status");
+
+        try {
+          const response = await fetch("/api/predict/rain_chance");
+          if (!response.ok) {
+            // Se a resposta da API não for OK, exibe uma mensagem de erro
+            statusElement.textContent = "Erro ao prever";
+            valueElement.textContent = "N/A";
+            return;
+          }
+
+          const data = await response.json();
+          const chance = data.chance_de_chuva;
+
+          valueElement.textContent = `${chance}%`; // Atualiza o valor da porcentagem
+
+          // Atualiza a legenda com base na chance
+          if (chance < 10) {
+            statusElement.textContent = "Tempo firme";
+          } else if (chance < 40) {
+            statusElement.textContent = "Possibilidade de chuva";
+          } else if (chance < 70) {
+            statusElement.textContent = "Provável chuva";
+          } else {
+            statusElement.textContent = "Alerta de chuva forte";
+          }
+        } catch (error) {
+          console.error("Erro ao buscar previsão de chuva:", error);
+          statusElement.textContent = "Serviço indisponível";
+          valueElement.textContent = "N/A";
+        }
+      }
       function toggleSidebarVisibility() {
         const sb = document.getElementById("sidebar");
         const mc = document.getElementById("mainContent");
         sb.classList.toggle("hide");
         mc.style.marginLeft = sb.classList.contains("hide") ? "0" : "80px";
       }
+      document.addEventListener("DOMContentLoaded", fetchRainChance);
     </script>
   </body>
 </html>

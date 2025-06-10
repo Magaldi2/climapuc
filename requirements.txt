@@ -5,3 +5,6 @@ mysql-connector-python==8.0.33
 python-dotenv
 requests==2.31.0
 PyJWT
+pandas
+scikit-learn
+joblib
