@@ -1,403 +1,415 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clima PUC - Controle de Luminárias</title>
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='clima.png') }}"
+      type="image/png"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Clima PUC - Controle de Luminárias</title>
-  <link rel="icon" href="{{ url_for('static', filename='clima.png') }}" type="image/png" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet" />
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+      body {
+        font-family: "Roboto", sans-serif;
+        background: #1f2a44;
+        color: #fff;
+        min-height: 100vh;
+        display: flex;
+      }
 
-    body {
-      font-family: "Roboto", sans-serif;
-      background: #1f2a44;
-      color: #fff;
-      min-height: 100vh;
-      display: flex;
-    }
+      .sidebar {
+        width: 80px;
+        height: 100vh;
+        position: fixed;
+        background-color: #2a3550;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px 0;
+        transition: transform 0.2s ease-in-out;
+        z-index: 1000;
+      }
 
-    .sidebar {
-      width: 80px;
-      height: 100vh;
-      position: fixed;
-      background-color: #2a3550;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px 0;
-      transition: transform 0.2s ease-in-out;
-      z-index: 1000;
-    }
+      .sidebar.hide {
+        transform: translateX(-100%);
+      }
 
-    .sidebar.hide {
-      transform: translateX(-100%);
-    }
+      .sidebar img.logo {
+        width: 80px;
+        margin-bottom: 30px;
+      }
 
-    .sidebar img.logo {
-      width: 80px;
-      margin-bottom: 30px;
-    }
+      .sidebar .nav-item {
+        margin: 20px 0;
+        cursor: pointer;
+        color: #fff;
+      }
 
-    .sidebar .nav-item {
-      margin: 20px 0;
-      cursor: pointer;
-      color: #fff;
-    }
+      .sidebar .nav-item a {
+        color: inherit;
+        text-decoration: none;
+      }
 
-    .sidebar .nav-item a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    .sidebar .nav-item i {
-      font-size: 1.8em;
-    }
-
-    .sidebar .nav-item.who-we-are {
-      margin-top: auto;
-    }
-
-    .main-content {
-      margin-left: 80px;
-      padding: 15px;
-      width: calc(100% - 80px);
-      transition: margin-left 0.3s ease-in-out;
-      overflow-y: auto;
-    }
-
-    .sidebar.hide+.main-content {
-      margin-left: 0;
-      width: 100%;
-    }
-
-    .top-bar {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    .menu-btn {
-      background: none;
-      border: none;
-      color: #fff;
-      font-size: 2em;
-      cursor: pointer;
-    }
-
-    .top-bar h1 {
-      font-size: 2.5em;
-      text-align: center;
-      flex-grow: 1;
-    }
-
-    .top-bar .dummy {
-      width: 2.2em;
-    }
-
-    #map {
-      height: 75vh;
-      width: 100%;
-      border-radius: 15px;
-      margin-bottom: 20px;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
-    }
-
-    .leaflet-tooltip {
-      background-color: rgba(47, 59, 88, 0.9) !important;
-      color: #ffffff !important;
-      border: 1px solid #02d7fd !important;
-      border-radius: 5px !important;
-      padding: 8px 12px !important;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
-      font-size: 0.9em !important;
-    }
-
-    .leaflet-tooltip-top:before,
-    .leaflet-tooltip-bottom:before,
-    .leaflet-tooltip-left:before,
-    .leaflet-tooltip-right:before {
-      background: rgba(47, 59, 88, 0.9) !important;
-    }
-
-    /* Estilos para o Modal de Configuração */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 2000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(0, 0, 0, 0.7);
-      padding-top: 40px;
-    }
-
-    .modal-content {
-      background-color: #2f3b58;
-      color: #fff;
-      margin: 2% auto;
-      padding: 30px;
-      border: 1px solid #02d7fd;
-      border-radius: 10px;
-      width: 90%;
-      max-width: 650px;
-      /* Aumentado max-width */
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-      position: relative;
-    }
-
-    .modal-close-button {
-      color: #aaa;
-      float: right;
-      font-size: 30px;
-      font-weight: bold;
-      line-height: 0.8;
-    }
-
-    .modal-close-button:hover,
-    .modal-close-button:focus {
-      color: #02d7fd;
-      text-decoration: none;
-      cursor: pointer;
-    }
-
-    .modal-content h3 {
-      color: #ffd700;
-      margin-bottom: 20px;
-      text-align: center;
-      font-size: 1.8em;
-    }
-
-    .modal-content p {
-      margin-bottom: 15px;
-      text-align: center;
-      font-size: 1.1em;
-    }
-
-    .modal-content hr {
-      border-color: rgba(255, 255, 255, 0.2);
-      margin: 20px 0;
-    }
-
-    /* Estilos para o controle de Dimmer */
-    .dimmer-control-container {
-      margin-bottom: 20px;
-      text-align: center;
-    }
-
-    .dimmer-control-container label {
-      display: block;
-      margin-bottom: 10px;
-      font-size: 1.1em;
-      color: #fff;
-    }
-
-    .dimmer-control-container #dimmerValueDisplay {
-      font-weight: bold;
-      color: #02d7fd;
-    }
-
-    .dimmer-slider {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 80%;
-      height: 10px;
-      background: #555;
-      outline: none;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-top: 5px;
-    }
-
-    .dimmer-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 22px;
-      height: 22px;
-      background: #02d7fd;
-      border-radius: 50%;
-      cursor: pointer;
-      border: 2px solid #fff;
-    }
-
-    .dimmer-slider::-moz-range-thumb {
-      width: 20px;
-      height: 20px;
-      background: #02d7fd;
-      border-radius: 50%;
-      cursor: pointer;
-      border: 2px solid #fff;
-    }
-
-    .modal-controls {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 15px;
-    }
-
-    /* Centralizado */
-    .modal-controls button {
-      padding: 12px 25px;
-      background-color: #02d7fd;
-      color: #1f2a44;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: bold;
-      font-size: 1em;
-      /* Aumentado */
-      flex-grow: 0;
-      /* Não cresce */
-      min-width: 120px;
-    }
-
-    .modal-controls button:hover {
-      background-color: #0197c1;
-    }
-
-    @media (max-width: 768px) {
-      .top-bar h1 {
+      .sidebar .nav-item i {
         font-size: 1.8em;
       }
 
-      #map {
-        height: 65vh;
+      .sidebar .nav-item.who-we-are {
+        margin-top: auto;
       }
 
       .main-content {
+        margin-left: 80px;
+        padding: 15px;
+        width: calc(100% - 80px);
+        transition: margin-left 0.3s ease-in-out;
+        overflow-y: auto;
+      }
+
+      .sidebar.hide + .main-content {
         margin-left: 0;
         width: 100%;
       }
 
-      .sidebar.hide+.main-content {
-        margin-left: 0;
+      .top-bar {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .menu-btn {
+        background: none;
+        border: none;
+        color: #fff;
+        font-size: 2em;
+        cursor: pointer;
+      }
+
+      .top-bar h1 {
+        font-size: 2.5em;
+        text-align: center;
+        flex-grow: 1;
+      }
+
+      .top-bar .dummy {
+        width: 2.2em;
+      }
+
+      #map {
+        height: 75vh;
+        width: 100%;
+        border-radius: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+      }
+
+      .leaflet-tooltip {
+        background-color: rgba(47, 59, 88, 0.9) !important;
+        color: #ffffff !important;
+        border: 1px solid #02d7fd !important;
+        border-radius: 5px !important;
+        padding: 8px 12px !important;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+        font-size: 0.9em !important;
+      }
+
+      .leaflet-tooltip-top:before,
+      .leaflet-tooltip-bottom:before,
+      .leaflet-tooltip-left:before,
+      .leaflet-tooltip-right:before {
+        background: rgba(47, 59, 88, 0.9) !important;
+      }
+
+      /* Estilos para o Modal de Configuração */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 2000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding-top: 40px;
       }
 
       .modal-content {
-        width: 95%;
-        max-width: 95%;
-        margin-top: 5%;
-        padding: 20px;
+        background-color: #2f3b58;
+        color: #fff;
+        margin: 2% auto;
+        padding: 30px;
+        border: 1px solid #02d7fd;
+        border-radius: 10px;
+        width: 90%;
+        max-width: 650px;
+        /* Aumentado max-width */
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        position: relative;
+      }
+
+      .modal-close-button {
+        color: #aaa;
+        float: right;
+        font-size: 30px;
+        font-weight: bold;
+        line-height: 0.8;
+      }
+
+      .modal-close-button:hover,
+      .modal-close-button:focus {
+        color: #02d7fd;
+        text-decoration: none;
+        cursor: pointer;
       }
 
       .modal-content h3 {
-        font-size: 1.5em;
+        color: #ffd700;
+        margin-bottom: 20px;
+        text-align: center;
+        font-size: 1.8em;
       }
 
-      .modal-controls button {
-        font-size: 0.9em;
-        padding: 10px 15px;
-        min-width: 100px;
+      .modal-content p {
+        margin-bottom: 15px;
+        text-align: center;
+        font-size: 1.1em;
+      }
+
+      .modal-content hr {
+        border-color: rgba(255, 255, 255, 0.2);
+        margin: 20px 0;
+      }
+
+      /* Estilos para o controle de Dimmer */
+      .dimmer-control-container {
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      .dimmer-control-container label {
+        display: block;
+        margin-bottom: 10px;
+        font-size: 1.1em;
+        color: #fff;
+      }
+
+      .dimmer-control-container #dimmerValueDisplay {
+        font-weight: bold;
+        color: #02d7fd;
       }
 
       .dimmer-slider {
-        width: 90%;
+        -webkit-appearance: none;
+        appearance: none;
+        width: 80%;
+        height: 10px;
+        background: #555;
+        outline: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 5px;
       }
-    }
 
-    /* Estilo principal da tabela */
-    .tabela-logs {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 20px 0;
-      font-size: 1rem;
-      background-color: #ffffff;
-      border-radius: 8px;
-      overflow: hidden;
-      color: black;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    }
+      .dimmer-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 22px;
+        height: 22px;
+        background: #02d7fd;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid #fff;
+      }
 
-    /* Estilo do cabeçalho */
-    .tabela-logs .tabela-cabecalho th {
-      background-color: #2c3e50;
-      color: #ffffff;
-      padding: 15px 20px;
-      text-align: left;
-      font-weight: 600;
-      text-transform: uppercase;
-      font-size: 0.85em;
-    }
+      .dimmer-slider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: #02d7fd;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid #fff;
+      }
 
-    /* Estilo das linhas e células do corpo */
-    .tabela-logs .linha-log td {
-      padding: 15px 20px;
-      border-bottom: 1px solid #e0e0e0;
-    }
+      .modal-controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+      }
 
-    .tabela-logs .linha-log:nth-of-type(even) {
-      background-color: #f8f9fa;
-      /* Efeito zebrado */
-    }
+      /* Centralizado */
+      .modal-controls button {
+        padding: 12px 25px;
+        background-color: #02d7fd;
+        color: #1f2a44;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 1em;
+        /* Aumentado */
+        flex-grow: 0;
+        /* Não cresce */
+        min-width: 120px;
+      }
 
-    .tabela-logs .linha-log:hover {
-      background-color: #e9ecef;
-      /* Efeito de hover */
-    }
+      .modal-controls button:hover {
+        background-color: #0197c1;
+      }
 
-    .tabela-logs .linha-log:last-of-type td {
-      border-bottom: none;
-      /* Remove a borda da última linha */
-    }
+      @media (max-width: 768px) {
+        .top-bar h1 {
+          font-size: 1.8em;
+        }
 
+        #map {
+          height: 65vh;
+        }
 
-    /* --- Estilização dos Status (Pílulas Coloridas) --- */
+        .main-content {
+          margin-left: 0;
+          width: 100%;
+        }
 
-    /* Estilo base para todas as pílulas de status */
-    .status {
-      display: inline-block;
-      padding: 5px 12px;
-      border-radius: 15px;
-      font-size: 0.8em;
-      font-weight: 700;
-      color: #fff;
-      text-align: center;
-      white-space: nowrap;
-      text-transform: capitalize;
-      /* Deixa a primeira letra maiúscula */
-    }
+        .sidebar.hide + .main-content {
+          margin-left: 0;
+        }
 
-    /* Verde para sucesso */
-    .status-finished {
-      background-color: #28a745;
-    }
+        .modal-content {
+          width: 95%;
+          max-width: 95%;
+          margin-top: 5%;
+          padding: 20px;
+        }
 
-    /* Azul para em progresso */
-    .status-executing {
-      background-color: #007bff;
-    }
+        .modal-content h3 {
+          font-size: 1.5em;
+        }
 
-    /* Amarelo para estados de espera/agendado */
-    .status-scheduled,
-    .status-waiting {
-      background-color: #ffc107;
-      color: #212529;
-      /* Texto escuro para melhor contraste */
-    }
+        .modal-controls button {
+          font-size: 0.9em;
+          padding: 10px 15px;
+          min-width: 100px;
+        }
 
-    /* Vermelho para falha */
-    .status-failed {
-      background-color: #dc3545;
-    }
+        .dimmer-slider {
+          width: 90%;
+        }
+      }
 
-    /* Cinza para cancelado */
-    .status-cancelled {
-      background-color: #6c757d;
-    }
-  </style>
-</head>
+      /* Estilo principal da tabela */
+      .tabela-logs {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        font-size: 1rem;
+        background-color: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+        color: black;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      }
 
+      /* Estilo do cabeçalho */
+      .tabela-logs .tabela-cabecalho th {
+        background-color: #2c3e50;
+        color: #ffffff;
+        padding: 15px 20px;
+        text-align: left;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85em;
+      }
+
+      /* Estilo das linhas e células do corpo */
+      .tabela-logs .linha-log td {
+        padding: 15px 20px;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      .tabela-logs .linha-log:nth-of-type(even) {
+        background-color: #f8f9fa;
+        /* Efeito zebrado */
+      }
+
+      .tabela-logs .linha-log:hover {
+        background-color: #e9ecef;
+        /* Efeito de hover */
+      }
+
+      .tabela-logs .linha-log:last-of-type td {
+        border-bottom: none;
+        /* Remove a borda da última linha */
+      }
+
+      /* --- Estilização dos Status (Pílulas Coloridas) --- */
+
+      /* Estilo base para todas as pílulas de status */
+      .status {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 0.8em;
+        font-weight: 700;
+        color: #fff;
+        text-align: center;
+        white-space: nowrap;
+        text-transform: capitalize;
+        /* Deixa a primeira letra maiúscula */
+      }
+
+      /* Verde para sucesso */
+      .status-finished {
+        background-color: #28a745;
+      }
+
+      /* Azul para em progresso */
+      .status-executing {
+        background-color: #007bff;
+      }
+
+      /* Amarelo para estados de espera/agendado */
+      .status-scheduled,
+      .status-waiting {
+        background-color: #ffc107;
+        color: #212529;
+        /* Texto escuro para melhor contraste */
+      }
+
+      /* Vermelho para falha */
+      .status-failed {
+        background-color: #dc3545;
+      }
+
+      /* Cinza para cancelado */
+      .status-cancelled {
+        background-color: #6c757d;
+      }
+    </style>
+  </head>
+  <div id="notification-container" style="position:fixed;top:30px;right:30px;z-index:3000;"></div>
   <body>
     <aside class="sidebar hide" id="sidebar">
       <div>
@@ -436,273 +448,328 @@
       </div>
     </aside>
 
-  <div class="main-content" id="mainContent">
-    <div class="top-bar">
-      <button class="menu-btn" onclick="toggleSidebarVisibility()">
-        <i class="fas fa-bars"></i>
-      </button>
-      <h1>Controle de Luminárias</h1>
-      <div class="dummy"></div>
-    </div>
-    <div id="map"></div>
-    <div id="logs-table">
-      <div>
-        <h1>Registro dos Tokens</h1>
-        <select name="" id="choose_luminaire">
-          <option value="" disabled selected>Escolha uma luminária</option>
-        </select>
-        <button id="refresh-button">Atualizar</button>
-      </div>
-      <table class="tabela-logs">
-        <thead class="tabela-cabecalho">
-          <tr>
-            <th>Última Atualização</th>
-            <th>Id do Ticket</th>
-            <th>Status do Ticket</th>
-            <th>Status do Comando</th>
-            <th>Comando</th>
-          </tr>
-        </thead>
-        <tbody id="logs" class="tabela-corpo"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div id="configModal" class="modal">
-    <div class="modal-content">
-      <span class="modal-close-button" onclick="closeConfigModal()">&times;</span>
-      <h3 id="modalLuminaireName">Nome da Luminária</h3>
-      <p id="modalLuminaireStatus">Status: Desconhecido</p>
-      <hr />
-      <div class="dimmer-control-container">
-        <label for="dimmerSlider">Intensidade do Dimmer:
-          <span id="dimmerValueDisplay">50</span>%</label>
-        <input type="range" id="dimmerSlider" min="0" max="100" value="50" class="dimmer-slider"
-          oninput="updateDimmerValueDisplay(this.value)" onchange="controlLuminaire('set_dimmer', this.value)" />
+    <div class="main-content" id="mainContent">
+      <div class="top-bar">
+        <button class="menu-btn" onclick="toggleSidebarVisibility()">
+          <i class="fas fa-bars"></i>
+        </button>
+        <h1>Controle de Luminárias</h1>
+        <div class="dummy"></div>
       </div>
       <div id="map"></div>
       <div id="logs-table">
-        <h1>Registro dos Tokens</h1>
+        <div>
+          <h1>Registro dos Tokens</h1>
+          <select name="" id="choose_luminaire">
+            <option value="" disabled selected>Escolha uma luminária</option>
+          </select>
+          <button id="refresh-button">Atualizar</button>
+        </div>
+        <table class="tabela-logs">
+          <thead class="tabela-cabecalho">
+            <tr>
+              <th>Última Atualização</th>
+              <th>Id do Ticket</th>
+              <th>Status do Ticket</th>
+              <th>Status do Comando</th>
+              <th>Comando</th>
+            </tr>
+          </thead>
+          <tbody id="logs" class="tabela-corpo"></tbody>
+        </table>
       </div>
     </div>
-  </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <div id="configModal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close-button" onclick="closeConfigModal()"
+          >&times;</span
+        >
+        <h3 id="modalLuminaireName">Nome da Luminária</h3>
+        <p id="modalLuminaireStatus">Status: Desconhecido</p>
+        <hr />
+        <div class="dimmer-control-container">
+          <label for="dimmerSlider"
+            >Intensidade do Dimmer:
+            <span id="dimmerValueDisplay">50</span>%</label
+          >
+          <input
+            type="range"
+            id="dimmerSlider"
+            min="0"
+            max="100"
+            value="50"
+            class="dimmer-slider"
+            oninput="updateDimmerValueDisplay(this.value)"
+            onchange="controlLuminaire('set_dimmer', this.value)"
+          />
+        </div>
+        <div class="modal-controls">
+          <button onclick="controlLuminaire('on')">
+            <i class="fas fa-lightbulb"></i> Ligar
+          </button>
+          <button onclick="controlLuminaire('off')">
+            <i class="fas fa-power-off"></i> Desligar
+          </button>
+        </div>
+        <div id="map"></div>
+        <div id="logs-table">
+          <h1>Registro dos Tokens</h1>
+        </div>
+      </div>
+    </div>
 
-  <script>
-    function toggleSidebarVisibility() {
-      const sb = document.getElementById("sidebar");
-      const mc = document.getElementById("mainContent");
-      sb.classList.toggle("hide");
-      mc.style.marginLeft = sb.classList.contains("hide") ? "0" : "80px";
-    }
 
-    let selectedLuminaireId = null;
-    let serialLuminaire = null;
-    let dimmerValue = null;
-    const choose_luminaire = document.querySelector("#choose_luminaire")
-    const log_luminaire = document.querySelector("#logs")
-    const refresh_button = document.querySelector("#refresh-button")
-    let lampSelected = ""
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
 
-    function updateDimmerValueDisplay(value) {
-      document.getElementById("dimmerValueDisplay").textContent = value;
-    }
-
-    function prepareAndOpenConfigModal(luminaireId) {
-      const luminaire = luminairesData.find((l) => l.id === luminaireId);
-      if (luminaire) {
-        selectedLuminaireId = luminaire.id;
-        serialLuminaire = luminaire.serial;
-        document.getElementById("modalLuminaireName").textContent =
-          luminaire.name;
-        document.getElementById(
-          "modalLuminaireStatus"
-        ).textContent = `Status: ${luminaire.status || "N/A"}`;
-
-        // Define o valor inicial do slider e atualiza o display
-        // (Assumindo que 'luminaire.dimmer_level' poderia vir dos dados no futuro, caso contrário, usa o valor padrão do HTML)
-        const currentDimmerLevel =
-          luminaire.dimmer_level !== undefined
-            ? luminaire.dimmer_level
-            : document.getElementById("dimmerSlider").value;
-        document.getElementById("dimmerSlider").value = currentDimmerLevel;
-        updateDimmerValueDisplay(currentDimmerLevel);
-
-        document.getElementById("configModal").style.display = "block";
+    <script>
+      function showNotification(message, type = "info") {
+        const container = document.getElementById("notification-container");
+        const notif = document.createElement("div");
+        notif.textContent = message;
+        notif.className = `custom-notification ${type}`;
+        notif.style.cssText = `
+      background: ${type === "error" ? "#dc3545" : "#02d7fd"};
+      color: #fff;
+      padding: 14px 24px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-weight: bold;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      min-width: 220px;
+      max-width: 350px;
+      word-break: break-word;
+      opacity: 0.95;
+      transition: opacity 0.3s;
+    `;
+        container.appendChild(notif);
+        setTimeout(() => {
+          notif.style.opacity = "0";
+          setTimeout(() => container.removeChild(notif), 400);
+        }, 2500);
       }
-    }
-
-
-    function updateDimmerValueDisplay(value) {
-      document.getElementById("dimmerValueDisplay").textContent = value;
-    }
-
-    function prepareAndOpenConfigModal(luminaireId) {
-      const luminaire = luminairesData.find((l) => l.id === luminaireId);
-      if (luminaire) {
-        selectedLuminaireId = luminaire.id;
-        serialLuminaire = luminaire.serial;
-
-        document.getElementById("modalLuminaireName").textContent =
-          luminaire.name;
-        document.getElementById(
-          "modalLuminaireStatus"
-        ).textContent = `Status: ${luminaire.status || "N/A"}`;
-
-        // Aqui pega o valor do dimmer da luminária e seta no slider
-        const currentDimmerLevel =
-          luminaire.dimmer !== undefined && luminaire.dimmer !== null
-            ? luminaire.dimmer
-            : 50; // valor padrão se não houver
-
-        document.getElementById("dimmerSlider").value = currentDimmerLevel;
-        updateDimmerValueDisplay(currentDimmerLevel);
-
-        document.getElementById("configModal").style.display = "block";
+      function toggleSidebarVisibility() {
+        const sb = document.getElementById("sidebar");
+        const mc = document.getElementById("mainContent");
+        sb.classList.toggle("hide");
+        mc.style.marginLeft = sb.classList.contains("hide") ? "0" : "80px";
       }
-    }
 
-    function closeConfigModal() {
-      document.getElementById("configModal").style.display = "none";
-    }
+      let selectedLuminaireId = null;
+      let serialLuminaire = null;
+      let dimmerValue = null;
+      const choose_luminaire = document.querySelector("#choose_luminaire");
+      const log_luminaire = document.querySelector("#logs");
+      const refresh_button = document.querySelector("#refresh-button");
+      let lampSelected = "";
 
-    function controlLuminaire(action, value = null) {
-      if (serialLuminaire !== null) {
-        let url = "/api/state";
-        let payload = { lampSerial: serialLuminaire };
+      function updateDimmerValueDisplay(value) {
+        document.getElementById("dimmerValueDisplay").textContent = value;
+      }
 
-        if (action === "on") {
-          payload.dimmerValue = 100;
-          // Atualiza o objeto da luminária
-          const lum = luminairesData.find(
-            (l) => l.serial === serialLuminaire
-          );
-          if (lum) lum.dimmer_level = 100;
-        } else if (action === "off") {
-          payload.dimmerValue = 0;
-          const lum = luminairesData.find(
-            (l) => l.serial === serialLuminaire
-          );
-          if (lum) lum.dimmer_level = 0;
-        } else if (action === "set_dimmer" && value !== null) {
-          payload.dimmerValue = parseInt(value);
-          const lum = luminairesData.find(
-            (l) => l.serial === serialLuminaire
-          );
-          if (lum) lum.dimmer_level = parseInt(value);
+      function prepareAndOpenConfigModal(luminaireId) {
+        const luminaire = luminairesData.find((l) => l.id === luminaireId);
+        if (luminaire) {
+          selectedLuminaireId = luminaire.id;
+          serialLuminaire = luminaire.serial;
+          document.getElementById("modalLuminaireName").textContent =
+            luminaire.name;
+          document.getElementById(
+            "modalLuminaireStatus"
+          ).textContent = `Status: ${luminaire.status || "N/A"}`;
+
+          // Define o valor inicial do slider e atualiza o display
+          // (Assumindo que 'luminaire.dimmer_level' poderia vir dos dados no futuro, caso contrário, usa o valor padrão do HTML)
+          const currentDimmerLevel =
+            luminaire.dimmer_level !== undefined
+              ? luminaire.dimmer_level
+              : document.getElementById("dimmerSlider").value;
+          document.getElementById("dimmerSlider").value = currentDimmerLevel;
+          updateDimmerValueDisplay(currentDimmerLevel);
+
+          document.getElementById("configModal").style.display = "block";
+        }
+      }
+
+      function updateDimmerValueDisplay(value) {
+        document.getElementById("dimmerValueDisplay").textContent = value;
+      }
+
+      function prepareAndOpenConfigModal(luminaireId) {
+        const luminaire = luminairesData.find((l) => l.id === luminaireId);
+        if (luminaire) {
+          selectedLuminaireId = luminaire.id;
+          serialLuminaire = luminaire.serial;
+
+          document.getElementById("modalLuminaireName").textContent =
+            luminaire.name;
+          document.getElementById(
+            "modalLuminaireStatus"
+          ).textContent = `Status: ${luminaire.status || "N/A"}`;
+
+          // Aqui pega o valor do dimmer da luminária e seta no slider
+          const currentDimmerLevel =
+            luminaire.dimmer !== undefined && luminaire.dimmer !== null
+              ? luminaire.dimmer
+              : 50; // valor padrão se não houver
+
+          document.getElementById("dimmerSlider").value = currentDimmerLevel;
+          updateDimmerValueDisplay(currentDimmerLevel);
+
+          document.getElementById("configModal").style.display = "block";
+        }
+      }
+
+      function closeConfigModal() {
+        document.getElementById("configModal").style.display = "none";
+      }
+
+      function controlLuminaire(action, value = null) {
+        if (serialLuminaire !== null) {
+          let url = "/api/state";
+          let payload = { lampSerial: serialLuminaire };
+
+          if (action === "on") {
+            payload.dimmerValue = 100;
+            const lum = luminairesData.find(
+              (l) => l.serial === serialLuminaire
+            );
+            if (lum) lum.dimmer_level = 100;
+            showNotification("Luminária ligando...", "info");
+          } else if (action === "off") {
+            payload.dimmerValue = 0;
+            const lum = luminairesData.find(
+              (l) => l.serial === serialLuminaire
+            );
+            if (lum) lum.dimmer_level = 0;
+            showNotification("Luminária desligando...", "info");
+          } else if (action === "set_dimmer" && value !== null) {
+            payload.dimmerValue = parseInt(value);
+            const lum = luminairesData.find(
+              (l) => l.serial === serialLuminaire
+            );
+            if (lum) lum.dimmer_level = parseInt(value);
+            showNotification("Alterando intensidade do dimmer...", "info");
+          } else {
+            showNotification("Ação desconhecida.", "error");
+            return;
+          }
+
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              // Aqui você pode mostrar uma notificação de sucesso se quiser
+            })
+            .catch((err) => {
+              showNotification("Erro na requisição: " + err, "error");
+            });
         } else {
-          alert("Ação desconhecida.");
+          showNotification(
+            "Nenhuma luminária selecionada para controle.",
+            "error"
+          );
+        }
+      }
+
+      const luminairesData = JSON.parse('{{ luminaires_data|tojson|safe }}');
+      const map = L.map("map").setView([-22.908833, -47.072389], 16);
+
+      L.tileLayer(
+        "https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=RZXpb9LpxsGCRktNA6mT",
+        {
+          attribution:
+            '&copy; <a href="https://www.maptiler.com/">MapTiler</a> & <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+          tileSize: 512,
+          zoomOffset: -1,
+          minZoom: 1,
+          maxZoom: 20,
+        }
+      ).addTo(map);
+
+      if (luminairesData && luminairesData.length > 0) {
+        luminairesData.forEach((luminaire) => {
+          const marker = L.marker([luminaire.lat, luminaire.lon]).addTo(map);
+          let statusText = "Desconhecido";
+          if (
+            luminaire.statusLampada === "ON" ||
+            luminaire.statusLampada === "1"
+          ) {
+            statusText = "<span style='color:green;'>Acesa</span>";
+          } else if (
+            luminaire.statusLampada === "OFF" ||
+            luminaire.statusLampada === "0"
+          ) {
+            statusText = "<span style='color:red;'>Desligada</span>";
+          } else if (luminaire.statusLampada) {
+            statusText = luminaire.statusLampada;
+          }
+
+          marker.bindTooltip(
+            `<strong>${luminaire.name}</strong><br>ID: ${luminaire.id}<br>Status: ${statusText}`,
+            {
+              direction: "top",
+              offset: L.point(
+                0,
+                -(marker.options.icon.options.iconSize
+                  ? marker.options.icon.options.iconSize[1] / 2
+                  : 20)
+              ),
+              permanent: false,
+              sticky: true,
+            }
+          );
+
+          marker.on("click", function () {
+            prepareAndOpenConfigModal(luminaire.id);
+          });
+          choose_luminaire.innerHTML += `<option value="${luminaire.serial}">${luminaire.name}</option>`;
+        });
+      } else {
+          showNotification("Nenhuma luminária selecionada para controle.", "error");
+      }
+
+      refresh_button.addEventListener("click", (e) => {
+        if (lampSelected == "") {
+          showNotification(
+            "Por favor, selecione uma luminária primeiro.",
+            "error"
+          );
           return;
         }
+        fetchTickets(lampSelected);
+      });
 
-        fetch(url, {
-          method: "POST",
+      choose_luminaire.addEventListener("change", (e) => {
+        fetchTickets(e.target.value);
+        lampSelected = e.target.value;
+      });
+
+      function fetchTickets(lampSerial) {
+        const choose_url = `/api/luminaires/tickets?lampSerial=${lampSerial}`;
+        fetch(choose_url, {
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
         })
           .then((res) => res.json())
           .then((data) => {
-            if (data.message) {
-              alert(data.message);
-            } else if (data.error) {
-              alert("Erro: " + data.error);
-            }
-          })
-          .catch((err) => {
-            alert("Erro na requisição: " + err);
-          });
-      } else {
-        alert("Nenhuma luminária selecionada para controle.");
-      }
-    }
+            log_luminaire.innerHTML = "";
 
-    const luminairesData = JSON.parse('{{ luminaires_data|tojson|safe }}');
-    const map = L.map("map").setView([-22.83408, -47.04319], 16);
+            const corpoTabela = document.getElementById("logs");
+            corpoTabela.innerHTML = "";
 
-    L.tileLayer(
-      "https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=RZXpb9LpxsGCRktNA6mT",
-      {
-        attribution:
-          '&copy; <a href="https://www.maptiler.com/">MapTiler</a> & <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
-        tileSize: 512,
-        zoomOffset: -1,
-        minZoom: 1,
-        maxZoom: 20,
-      }
-    ).addTo(map);
+            data.content.forEach((content) => {
+              // Converte o status para minúsculas para garantir que corresponda à classe CSS
+              const statusClass = content.statusCommand.toLowerCase();
+              const dataFormatada = formatarTimestamp(content.updatedAt);
 
-    if (luminairesData && luminairesData.length > 0) {
-      luminairesData.forEach((luminaire) => {
-        const marker = L.marker([luminaire.lat, luminaire.lon]).addTo(map);
-        let statusText = "Desconhecido";
-        if (luminaire.statusLampada === "ON" || luminaire.statusLampada === "1") {
-          statusText = "<span style='color:green;'>Acesa</span>";
-        } else if (luminaire.statusLampada === "OFF" || luminaire.statusLampada === "0") {
-          statusText = "<span style='color:red;'>Desligada</span>";
-        } else if (luminaire.statusLampada) {
-          statusText = luminaire.statusLampada;
-        }
-
-        marker.bindTooltip(
-          `<strong>${luminaire.name}</strong><br>ID: ${luminaire.id}<br>Status: ${statusText}`,
-          {
-            direction: "top",
-            offset: L.point(
-              0,
-              -(marker.options.icon.options.iconSize
-                ? marker.options.icon.options.iconSize[1] / 2
-                : 20)
-            ),
-            permanent: false,
-            sticky: true,
-          }
-        );
-
-        marker.on("click", function () {
-          prepareAndOpenConfigModal(luminaire.id);
-        });
-        choose_luminaire.innerHTML += `<option value="${luminaire.serial}">${luminaire.name}</option>`
-
-      });
-    } else {
-      alert("Nenhuma luminária selecionada para controle.");
-    }
-
-
-    refresh_button.addEventListener("click", (e) => {
-      if (lampSelected == "") {
-        alert("Escolha uma lampada primeiro")
-        return;
-      }
-      fetchTickets(lampSelected)
-    })
-
-    choose_luminaire.addEventListener('change', (e) => {
-      fetchTickets(e.target.value)
-      lampSelected = e.target.value
-    })
-
-    function fetchTickets(lampSerial) {
-      const choose_url = `/api/luminaires/tickets?lampSerial=${lampSerial}`
-      fetch(choose_url, {
-        headers: { "Content-Type": "application/json" },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          log_luminaire.innerHTML = ""
-
-          // Encontre o elemento <tbody> da sua tabela
-          const corpoTabela = document.getElementById('logs'); // Ou o ID que você estiver usando
-          corpoTabela.innerHTML = ''; // Limpe o conteúdo antigo antes de adicionar o novo
-
-          data.content.forEach((content) => {
-            // Converte o status para minúsculas para garantir que corresponda à classe CSS
-            const statusClass = content.statusCommand.toLowerCase();
-            const dataFormatada = formatarTimestamp(content.updatedAt);
-
-            corpoTabela.innerHTML += `
+              corpoTabela.innerHTML += `
                 <tr class="linha-log">
                   <td data-label="Última Atualização">${dataFormatada}</td>
                   <td data-label="Id do Ticket">${content.id}</td>
@@ -713,41 +780,43 @@
                   <td data-label="Comando">${content.commandType}</td>
                 </tr>
               `;
+            });
+          })
+          .catch((err) => {
+            showNotification("Erro na requisição: " + err, "error");
           });
-        })
-        .catch((err) => {
-          alert("Erro na requisição: " + err);
-        });
-    }
-
-    window.onclick = function (event) {
-      const modal = document.getElementById("configModal");
-      if (event.target == modal) {
-        closeConfigModal();
-      }
-    };
-
-    function formatarTimestamp(timestamp) {
-      // O JavaScript espera o timestamp em milissegundos.
-      // Se o timestamp for um número e tiver 10 dígitos, é provável que esteja em segundos.
-      if (typeof timestamp === 'number' && timestamp.toString().length === 10) {
-        timestamp = timestamp * 1000;
       }
 
-      const data = new Date(timestamp);
+      window.onclick = function (event) {
+        const modal = document.getElementById("configModal");
+        if (event.target == modal) {
+          closeConfigModal();
+        }
+      };
 
-      // Pega cada parte da data/hora
-      const dia = String(data.getDate()).padStart(2, '0');
-      const mes = String(data.getMonth() + 1).padStart(2, '0'); // Mês começa em 0, então somamos 1
-      const ano = data.getFullYear();
-      const horas = String(data.getHours()).padStart(2, '0');
-      const minutos = String(data.getMinutes()).padStart(2, '0');
-      const segundos = String(data.getSeconds()).padStart(2, '0');
+      function formatarTimestamp(timestamp) {
+        // O JavaScript espera o timestamp em milissegundos.
+        // Se o timestamp for um número e tiver 10 dígitos, é provável que esteja em segundos.
+        if (
+          typeof timestamp === "number" &&
+          timestamp.toString().length === 10
+        ) {
+          timestamp = timestamp * 1000;
+        }
 
-      // Retorna a string montada
-      return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
-    }
-  </script>
-</body>
+        const data = new Date(timestamp);
 
+        // Pega cada parte da data/hora
+        const dia = String(data.getDate()).padStart(2, "0");
+        const mes = String(data.getMonth() + 1).padStart(2, "0"); // Mês começa em 0, então somamos 1
+        const ano = data.getFullYear();
+        const horas = String(data.getHours()).padStart(2, "0");
+        const minutos = String(data.getMinutes()).padStart(2, "0");
+        const segundos = String(data.getSeconds()).padStart(2, "0");
+
+        // Retorna a string montada
+        return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
+      }
+    </script>
+  </body>
 </html>
