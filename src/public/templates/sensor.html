@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="refresh" content="600" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Clima PUC - Gráfico CSV</title>
+    <title>Clima PUC - Projeto Resfria</title>
     <link
       rel="icon"
       href="{{ url_for('static', filename='clima.png') }}"
@@ -122,25 +122,79 @@
 
     <div class="main-content">
       <div class="top-bar">
-        <h1>Gráficos por Métrica</h1>
+        <h1>Projeto Resfria e TEnerTEf</h1>
+      </div>
+      <div
+        class="top-images"
+        style="
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 30px;
+          margin-bottom: 20px;
+        "
+      >
+        <img
+          src="{{ url_for('static', filename='refria.jpg') }}"
+          alt="Imagem 1"
+          style="height: 70px"
+        />
+        <img
+          src="{{ url_for('static', filename='fapesp.jpg') }}"
+          alt="Imagem 2"
+          style="height: 70px"
+        />
+        <img
+          src="{{ url_for('static', filename='tenef.jpg') }}"
+          alt="Imagem 3"
+          style="height: 70px"
+        />
+        <img
+          src="{{ url_for('static', filename='pucpos.jpg') }}"
+          alt="Imagem 3"
+          style="height: 70px"
+        />
+      </div>
+      <div
+        class="top-images"
+        style="
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 30px;
+          margin-bottom: 20px;
+        "
+      >
+        <img
+          src="{{ url_for('static', filename='resfriainfo.jpg') }}"
+          style="height: 300px"
+        />
       </div>
 
       <div class="graph-section"><canvas id="tempChart"></canvas></div>
       <div class="graph-section"><canvas id="humidityChart"></canvas></div>
       <div class="graph-section"><canvas id="co2Chart"></canvas></div>
-
-      <div style="text-align: center; margin: 20px 0">
-        <label for="csvFile">Importar outro CSV:</label>
-        <input type="file" id="csvFile" accept=".csv" />
-      </div>
-
-
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
       async function fetchCSV(url) {
         const res = await fetch(url);
         const text = await res.text();
         drawCharts(text);
+      }
+
+      function formatTimestamp(ts) {
+        // Tenta converter para Date, suporta tanto ISO quanto epoch
+        const d = new Date(ts);
+        if (!isNaN(d)) {
+          // Exibe só hora:minuto se for do mesmo dia, senão dia/mês hora:minuto
+          const dia = String(d.getDate()).padStart(2, "0");
+          const mes = String(d.getMonth() + 1).padStart(2, "0");
+          const hora = String(d.getHours()).padStart(2, "0");
+          const min = String(d.getMinutes()).padStart(2, "0");
+          return `${dia}/${mes} ${hora}:${min}`;
+        }
+        return ts;
       }
 
       function drawCharts(csv) {
@@ -153,7 +207,7 @@
 
         for (let i = 1; i < lines.length; i++) {
           const [t, c1, c2, c3] = lines[i].split(",").map((e) => e.trim());
-          time.push(t);
+          time.push(formatTimestamp(t));
           temp.push(parseFloat(c1));
           hum.push(parseFloat(c2));
           co2.push(parseFloat(c3));
@@ -180,7 +234,16 @@
               plugins: { legend: { labels: { color: "#fff" } } },
               scales: {
                 y: { ticks: { color: "#fff" }, grid: { color: "#444" } },
-                x: { ticks: { color: "#fff" }, grid: { color: "#444" } },
+                x: {
+                  ticks: {
+                    color: "#fff",
+                    maxTicksLimit: 8, // Limita a quantidade de labels no eixo X
+                    autoSkip: true,
+                    maxRotation: 0,
+                    minRotation: 0,
+                  },
+                  grid: { color: "#444" },
+                },
               },
             },
           });
@@ -192,14 +255,9 @@
       }
 
       fetchCSV("/static/data/medicoes_resfria_tenertef.csv");
-
-      document.getElementById("csvFile").addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (evt) => drawCharts(evt.target.result);
-        reader.readAsText(file);
-      });
+      setInterval(() => {
+        fetchCSV("/static/data/medicoes_resfria_tenertef.csv");
+      }, 30000);
     </script>
   </body>
 </html>
