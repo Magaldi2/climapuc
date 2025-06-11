@@ -89,23 +89,34 @@ def get_temperature_status(temperature):
         return "Calor extremo"
 
 def calculate_heat_index(temp_c, humidity):
+    """Calcula o índice de calor (heat index) em Celsius."""
     if temp_c <= 26.7 or humidity <= 40:
         return temp_c
-
-    # Converte temperatura para Fahrenheit para a fórmula
     T_f = (temp_c * 9/5) + 32
     RH = humidity
-
-    # Fórmula de regressão de Rothfusz (usada pelo NWS)
     HI_f = -42.379 + 2.04901523 * T_f + 10.14333127 * RH \
            - 0.22475541 * T_f * RH - 0.00683783 * T_f**2 \
            - 0.05481717 * RH**2 + 0.00122874 * T_f**2 * RH \
            + 0.00085282 * T_f * RH**2 - 0.00000199 * T_f**2 * RH**2
-
-    # Converte o resultado de volta para Celsius
     HI_c = (HI_f - 32) * 5/9
-
     return HI_c
+
+def calculate_wind_chill(temp_c, wind_speed_kmh):
+    """Calcula o wind chill (sensação térmica por vento) em Celsius."""
+    # Só faz sentido para temperaturas <= 10°C e vento >= 4.8 km/h
+    if temp_c > 10 or wind_speed_kmh < 4.8:
+        return temp_c
+    v = wind_speed_kmh
+    wc = 13.12 + 0.6215 * temp_c - 11.37 * v**0.16 + 0.3965 * temp_c * v**0.16
+    return wc
+
+def calculate_feels_like(temp_c, humidity, wind_speed_kmh):
+    if temp_c <= 10 and wind_speed_kmh >= 4.8:
+        return calculate_wind_chill(temp_c, wind_speed_kmh)
+    elif temp_c >= 27 and humidity >= 40:
+        return calculate_heat_index(temp_c, humidity)
+    else:
+        return temp_c
 
 def get_daily_temp_stats():
     """Busca apenas as temperaturas Mínima e Máxima do dia atual."""
