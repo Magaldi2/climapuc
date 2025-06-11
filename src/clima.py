@@ -195,7 +195,6 @@ def index():
 
     temperature = current_data.get('temperature', 0)
     humidity = current_data.get('humidity', 0)
-    feels_like_temp = calculate_feels_like(temperature, humidity, average_wind_speed_kmh)
 
     wind_direction_rad = float(current_data.get('wind_direction', 0))
     uv_index = float(current_data.get('uv_index', 0))
@@ -204,6 +203,7 @@ def index():
     previous_rain_level = float(previous_data.get('rain_level', 0)) if previous_data else current_rain_level
     wind_direction, _ = rad_to_direction_with_icon(wind_direction_rad)
     average_wind_speed_kmh = average_wind_speed * 3.6
+    feels_like_temp = calculate_feels_like(temperature, humidity, average_wind_speed_kmh)
 
     return render_template(
         'index.html',
