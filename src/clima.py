@@ -9,14 +9,14 @@ clima_bp = Blueprint('clima', __name__, template_folder='templates', static_fold
 def rad_to_direction_with_icon(rad):
     """Converte radianos para direção cardeal e retorna ícone correspondente."""
     directions = [
-        ('Norte', 'rotate-0'),   
-        ('Nordeste', 'rotate-45'),  
-        ('Leste', 'rotate-90'),   
-        ('Sudeste', 'rotate-135'), 
-        ('Sul', 'rotate-180'),  
-        ('Sudoeste', 'rotate-225'), 
-        ('Oeste', 'rotate-270'),  
-        ('Noroeste', 'rotate-315')  
+        ('Norte', 'rotate-0'),
+        ('Nordeste', 'rotate-45'),
+        ('Leste', 'rotate-90'),
+        ('Sudeste', 'rotate-135'),
+        ('Sul', 'rotate-180'),
+        ('Sudoeste', 'rotate-225'),
+        ('Oeste', 'rotate-270'),
+        ('Noroeste', 'rotate-315')
     ]
     rad = rad % (2 * math.pi)
     index = int((rad + math.pi / 8) // (math.pi / 4)) % 8
@@ -31,7 +31,7 @@ def get_rain_status(current_rain_level, previous_rain_level):
         return "Chuviscando"
     else:
         return "Chovendo"
-    
+
 def get_wind_speed_status(wind_speed_kmh):
     """Determina o status da velocidade do vento em km/h baseado na Escala Modificada de Beaufort."""
     if wind_speed_kmh == 0:
@@ -71,7 +71,7 @@ def get_humidity_status(humidity):
     if humidity < 30:
         return "Ar muito seco"
     elif humidity < 60:
-        return "Umidade confortável"    
+        return "Umidade confortável"
     else:
         return "Ar muito úmido"
 
@@ -87,7 +87,68 @@ def get_temperature_status(temperature):
         return "Clima quente"
     else:
         return "Calor extremo"
-    
+
+def calculate_heat_index(temp_c, humidity):
+    """Calcula o índice de calor (heat index) em Celsius."""
+    if temp_c <= 26.7 or humidity <= 40:
+        return temp_c
+    T_f = (temp_c * 9/5) + 32
+    RH = humidity
+    HI_f = -42.379 + 2.04901523 * T_f + 10.14333127 * RH \
+           - 0.22475541 * T_f * RH - 0.00683783 * T_f**2 \
+           - 0.05481717 * RH**2 + 0.00122874 * T_f**2 * RH \
+           + 0.00085282 * T_f * RH**2 - 0.00000199 * T_f**2 * RH**2
+    HI_c = (HI_f - 32) * 5/9
+    return HI_c
+
+def calculate_wind_chill(temp_c, wind_speed_kmh):
+    """Calcula o wind chill (sensação térmica por vento) em Celsius."""
+    # Só faz sentido para temperaturas <= 10°C e vento >= 4.8 km/h
+    if temp_c > 10 or wind_speed_kmh < 4.8:
+        return temp_c
+    v = wind_speed_kmh
+    wc = 13.12 + 0.6215 * temp_c - 11.37 * v**0.16 + 0.3965 * temp_c * v**0.16
+    return wc
+
+def calculate_feels_like(temp_c, humidity, wind_speed_kmh):
+    if temp_c <= 10 and wind_speed_kmh >= 4.8:
+        return calculate_wind_chill(temp_c, wind_speed_kmh)
+    elif temp_c >= 27 and humidity >= 40:
+        return calculate_heat_index(temp_c, humidity)
+    else:
+        return temp_c
+
+def get_daily_temp_stats():
+    """Busca apenas as temperaturas Mínima e Máxima do dia atual."""
+    connection = None
+    cursor = None
+    stats = {'min_temp': 0, 'max_temp': 0}
+    try:
+        connection = mysql.connector.connect(host="mysql", user="root", password="example", database="weather_data")
+        cursor = connection.cursor(dictionary=True)
+
+        now_utc = datetime.now(timezone.utc)
+        local_now = now_utc - timedelta(hours=3)
+        start_of_day = datetime(local_now.year, local_now.month, local_now.day, tzinfo=timezone.utc)
+        start_timestamp = int(start_of_day.timestamp()) + 3 * 3600
+        end_timestamp = int((start_of_day + timedelta(days=1)).timestamp()) + 3 * 3600
+
+        query = "SELECT MIN(temperature) as min_temp, MAX(temperature) as max_temp FROM sensor_data WHERE timestamp BETWEEN %s AND %s"
+        cursor.execute(query, (start_timestamp, end_timestamp))
+        result = cursor.fetchone()
+
+        if result and result['min_temp'] is not None:
+            stats['min_temp'] = result['min_temp']
+            stats['max_temp'] = result['max_temp']
+
+    except mysql.connector.Error as e:
+        print(f"Erro ao buscar estatísticas diárias do MySQL: {e}")
+    finally:
+        if cursor: cursor.close()
+        if connection and connection.is_connected(): connection.close()
+
+    return stats
+
 def get_mysql_data():
     """Buscar os dois últimos dados do MySQL."""
     connection = None
@@ -117,63 +178,49 @@ def get_mysql_data():
         if connection is not None and connection.is_connected():
             connection.close()
 
+
+
+# Em src/clima.py
+
 @clima_bp.route('/')
 def index():
     current_data, previous_data = get_mysql_data()
-    if not current_data:
-        return render_template(
-            'index.html', 
-            message="Nenhum dado disponível no momento.",
-            wind_direction="N/D",
-            wind_icon_class="rotate-0",
-            uv_status="N/A",
-            humidity_status="N/A",
-            rain_status="N/A",
-            temperature_status="N/A",
-            temperature=0,
-            uv_index=0,
-            humidity=0,
-            rain_level=0,
-            average_wind_speed=0,  # Adicionando a variável average_wind_speed com valor padrão
-            wind_speed_status="N/A",  # Adicionando a variável wind_speed_status com valor padrão
-            wind_speed_kmh=0  # Adicionando a variável wind_speed_kmh com valor padrão
-        )
 
-    # Dados dos sensores atuais
+    if not current_data:
+        return render_template('index.html', temperature=0, humidity=0, rain_level=0, wind_speed_kmh=0, wind_direction="N/D", uv_index=0, temperature_status="N/A", humidity_status="N/A", rain_status="N/A", wind_speed_status="N/A", uv_status="N/A", max_temp=0, min_temp=0, feels_like_temp=0)
+
+    daily_stats = get_daily_temp_stats()
+    min_temp = daily_stats.get('min_temp', 0)
+    max_temp = daily_stats.get('max_temp', 0)
+
+    temperature = current_data.get('temperature', 0)
+    humidity = current_data.get('humidity', 0)
+
     wind_direction_rad = float(current_data.get('wind_direction', 0))
     uv_index = float(current_data.get('uv_index', 0))
-    humidity = float(current_data.get('humidity', 0))
     current_rain_level = float(current_data.get('rain_level', 0))
-    temperature = float(current_data.get('temperature', 0))
-    average_wind_speed = float(current_data.get('average_wind_speed', 0))  # Obtendo a velocidade média do vento
-
+    average_wind_speed = float(current_data.get('average_wind_speed', 0))
     previous_rain_level = float(previous_data.get('rain_level', 0)) if previous_data else current_rain_level
-
-    # Converter radianos para direção cardeal e ícone
-    wind_direction, wind_icon_class = rad_to_direction_with_icon(wind_direction_rad)
-
-    # Mensagens baseadas nos valores
-    rain_status = get_rain_status(current_rain_level, previous_rain_level)
-    wind_speed_status = get_wind_speed_status(average_wind_speed)  # Obtendo o status da velocidade do vento
-
-    # Converter a velocidade do vento de m/s para km/h
+    wind_direction, _ = rad_to_direction_with_icon(wind_direction_rad)
     average_wind_speed_kmh = average_wind_speed * 3.6
+    feels_like_temp = calculate_feels_like(temperature, humidity, average_wind_speed_kmh)
 
     return render_template(
         'index.html',
-        wind_direction=wind_direction,
-        wind_icon_class=wind_icon_class,
-        uv_status=get_uv_status(uv_index),
-        humidity_status=get_humidity_status(humidity),
-        rain_status=rain_status,
-        temperature_status=get_temperature_status(temperature),
         temperature=temperature,
-        uv_index=uv_index,
         humidity=humidity,
         rain_level=current_rain_level,
-        average_wind_speed=average_wind_speed_kmh,  # Passando a variável convertida para o template
-        wind_speed_status=wind_speed_status,  # Passando a variável wind_speed_status para o template
-        wind_speed_kmh=average_wind_speed_kmh  # Passando a variável wind_speed_kmh para o template
+        wind_speed_kmh=average_wind_speed_kmh,
+        wind_direction=wind_direction,
+        uv_index=uv_index,
+        temperature_status=get_temperature_status(temperature),
+        humidity_status=get_humidity_status(humidity),
+        rain_status=get_rain_status(current_rain_level, previous_rain_level),
+        wind_speed_status=get_wind_speed_status(average_wind_speed_kmh),
+        uv_status=get_uv_status(uv_index),
+        max_temp=max_temp,
+        min_temp=min_temp,
+        feels_like_temp=feels_like_temp
     )
 
 
@@ -190,19 +237,19 @@ def dashboard():
             database="weather_data"
         )
         cursor = connection.cursor(dictionary=True)
-        
+
         # Calcular o início e fim do dia UTC-3
         now = datetime.now(timezone.utc)
         local_now = now - timedelta(hours=3) # Ajuste para UTC-3
         start_of_day = datetime(local_now.year, local_now.month, local_now.day, tzinfo=timezone.utc)
         start_timestamp = int(start_of_day.timestamp()) + 3 * 3600
         end_timestamp = int((start_of_day + timedelta(days=1)).timestamp()) + 3 * 3600
-        
+
         # Buscar apenas os dados do dia atual ajustado para UTC-3
         query = """
             SELECT timestamp, temperature, humidity, rain_level, average_wind_speed
-            FROM sensor_data 
-            WHERE temperature IS NOT NULL 
+            FROM sensor_data
+            WHERE temperature IS NOT NULL
             AND timestamp BETWEEN %s AND %s
             ORDER BY timestamp
         """
@@ -243,7 +290,7 @@ def plot_data():
             database="weather_data"
         )
         cursor = connection.cursor(dictionary=True)
-        
+
         # Calcular o início e fim do dia UTC-3
         now = datetime.now(timezone.utc)
         local_now = now - timedelta(hours=3) # Ajuste para UTC-3
@@ -251,17 +298,17 @@ def plot_data():
         start_timestamp = int(start_of_day.timestamp()) + 3 * 3600
         end_timestamp = int((start_of_day + timedelta(days=1)).timestamp()) + 3 * 3600
 
-        
+
         # Buscar apenas os dados do dia atual ajustado para UTC-3
         query = """
-            SELECT * FROM sensor_data 
-            WHERE temperature IS NOT NULL 
+            SELECT * FROM sensor_data
+            WHERE temperature IS NOT NULL
             AND timestamp BETWEEN %s AND %s
             ORDER BY timestamp
         """
         cursor.execute(query, (start_timestamp, end_timestamp))
         data = cursor.fetchall()
-        
+
     except mysql.connector.Error as e:
         print(f"Erro ao buscar dados do MySQL: {e}")
         return jsonify({"message": "Erro ao buscar dados do MySQL"}), 500
@@ -312,4 +359,3 @@ def plot_data():
 @clima_bp.route('/about')
 def about():
     return render_template('about.html')
-
