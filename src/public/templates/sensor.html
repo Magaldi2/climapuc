@@ -1,4 +1,3 @@
-<!-- Versão atualizada do sensor.html com gráficos separados por métrica e tamanho reduzido -->
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
@@ -81,6 +80,28 @@
         border-radius: 8px;
         height: 40vh;
       }
+      /* Estilo para o seletor de data */
+      .controls-section {
+        margin: 20px auto;
+        width: 95%;
+        max-width: 1000px;
+        text-align: center;
+      }
+      .controls-section label {
+        color: #fff;
+        margin-right: 10px;
+        font-size: 1.1em;
+      }
+      .controls-section select {
+        padding: 8px;
+        border-radius: 5px;
+        background-color: #2a3550;
+        color: #fff;
+        border: 1px solid #444;
+        cursor: pointer;
+        font-family: "Roboto", sans-serif; /* Usar a mesma fonte do corpo */
+        font-size: 1em;
+      }
     </style>
   </head>
   <body>
@@ -155,97 +176,227 @@
           style="height: 70px"
         />
       </div>
+
+      <div class="controls-section">
+        <label for="datetime">Selecionar Data:</label>
+        <select name="datetime" id="datetime">
+          <option value="">Carregando datas...</option>
+        </select>
+      </div>
+
       <div class="graph-section"><canvas id="tempChart"></canvas></div>
       <div class="graph-section"><canvas id="humidityChart"></canvas></div>
       <div class="graph-section"><canvas id="co2Chart"></canvas></div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+      let allData = { time: [], temp: [], hum: [], co2: [] }; // Armazenar todos os dados brutos
+      let myCharts = {}; // Armazenar instâncias dos gráficos para destruí-las
+
+      // Função para buscar o CSV
       async function fetchCSV(url) {
         const res = await fetch(url);
         const text = await res.text();
-        drawCharts(text);
-      }
+        parseCSV(text); // Parseia e armazena todos os dados
 
-      function formatTimestamp(ts) {
-        // Tenta converter para Date, suporta tanto ISO quanto epoch
-        const d = new Date(ts);
-        if (!isNaN(d)) {
-          // Exibe só hora:minuto se for do mesmo dia, senão dia/mês hora:minuto
-          const dia = String(d.getDate()).padStart(2, "0");
-          const mes = String(d.getMonth() + 1).padStart(2, "0");
-          const hora = String(d.getHours()).padStart(2, "0");
-          const min = String(d.getMinutes()).padStart(2, "0");
-          return `${dia}/${mes} ${hora}:${min}`;
+        // Popula o seletor de data com o array allData.time
+        populateDateTimeSelector(allData.time); // Passa o array de timestamps diretamente
+
+        // Desenha os gráficos para a data mais recente ao carregar
+        const dateSelector = document.getElementById('datetime');
+        if (dateSelector && dateSelector.value) {
+            drawCharts(dateSelector.value);
         }
-        return ts;
       }
 
-      function drawCharts(csv) {
+      // Função auxiliar para formatar timestamp para exibição no gráfico (DD/MM HH:mm)
+      function formatTimestampForDisplay(ts) {
+        const d = new Date(ts);
+        if (isNaN(d)) return ts;
+        const dia = String(d.getDate()).padStart(2, "0");
+        const mes = String(d.getMonth() + 1).padStart(2, "0");
+        const hora = String(d.getHours()).padStart(2, "0");
+        const min = String(d.getMinutes()).padStart(2, "0");
+        return `${dia}/${mes} ${hora}:${min}`;
+      }
+
+      // Função auxiliar para formatar timestamp para uma string de data (YYYY-MM-DD) para filtragem
+      function formatTimestampToDateString(ts) {
+        // Assume que o timestamp começa com a data no formato YYYY-MM-DD
+        // e pega os primeiros 10 caracteres.
+        return ts.substring(0, 10);
+      }
+
+      // Função para parsear o CSV e armazenar os dados brutos
+      function parseCSV(csv) {
         const lines = csv.trim().split("\n");
-        const headers = lines[0].split(",");
-        const time = [],
-          temp = [],
-          hum = [],
-          co2 = [];
+        allData = { time: [], temp: [], hum: [], co2: [] }; // Resetar dados
 
         for (let i = 1; i < lines.length; i++) {
-          const [t, c1, c2, c3] = lines[i].split(",").map((e) => e.trim());
-          time.push(formatTimestamp(t));
-          temp.push(parseFloat(c1));
-          hum.push(parseFloat(c2));
-          co2.push(parseFloat(c3));
+          const line = lines[i];
+          if (line.trim() === '') continue; // Ignora linhas vazias
+
+          const [t, c1, c2, c3] = line.split(",").map((e) => e.trim());
+          allData.time.push(t); // Armazena o timestamp bruto
+          allData.temp.push(parseFloat(c1));
+          allData.hum.push(parseFloat(c2));
+          allData.co2.push(parseFloat(c3));
         }
-
-        const createChart = (ctxId, label, data, color,min,max) => {
-          new Chart(document.getElementById(ctxId), {
-            type: "line",
-            data: {
-              labels: time,
-              datasets: [
-                {
-                  label,
-                  data,
-                  borderColor: color,
-                  backgroundColor: color + "33",
-                  fill: true,
-                  tension: 0.3,
-                },
-              ],
-            },
-            options: {
-              responsive: true,
-              plugins: { legend: { labels: { color: "#fff" } } },
-              scales: {
-                y: {
-                   ticks: { color: "#fff" }, 
-                   grid: { color: "#444" },
-                   min: min,
-                   max: max
-                },
-                x: {
-                  ticks: {
-                    color: "#fff",
-                    maxTicksLimit: 8, // Limita a quantidade de labels no eixo X
-                    autoSkip: true,
-                    maxRotation: 0,
-                    minRotation: 0,
-                  },
-                  grid: { color: "#444" },
-                },
-              },
-            },
-          });
-        };
-
-        createChart("tempChart", "Temperatura (C)", temp, "#02d7fd",0,30);
-        createChart("humidityChart", "Umidade (%)", hum, "#ffd700",0,100);
-        createChart("co2Chart", "PPM CO2", co2, "#ff6384",0,1000);
       }
 
+      // NOVO: Função para popular o seletor de data e configurar o evento de mudança
+      // Agora recebe diretamente o array de timestamps
+      function populateDateTimeSelector(timestampsArray) {
+        const dateSelector = document.getElementById('datetime');
+        if (!dateSelector) {
+            console.error("Elemento com ID 'datetime' não encontrado.");
+            return;
+        }
+
+        const previouslySelectedDate = dateSelector.value; // Salva a data selecionada antes de limpar
+
+        dateSelector.innerHTML = ''; // Limpa as opções existentes
+
+        const uniqueDates = new Set();
+
+        // Itera sobre o array de timestamps fornecido
+        timestampsArray.forEach(timestamp => {
+            const dateString = formatTimestampToDateString(timestamp);
+            if (dateString.length === 10) { // Garante que é um formato YYYY-MM-DD válido
+                uniqueDates.add(dateString);
+            }
+        });
+
+        // Converte para Array e ordena as datas em ordem decrescente (mais recente primeiro)
+        const sortedDates = Array.from(uniqueDates).sort().reverse();
+
+        sortedDates.forEach(dateString => {
+            const option = document.createElement('option');
+            option.value = dateString; // O valor da opção será a data no formato YYYY-MM-DD
+            
+            // Formata para exibição no dropdown (DD/MM/YYYY)
+            const [year, month, day] = dateString.split('-');
+            option.textContent = `${day}/${month}/${year}`;
+            
+            dateSelector.appendChild(option);
+        });
+
+        // Tenta restaurar a data selecionada anteriormente, se ainda existir
+        if (previouslySelectedDate && Array.from(dateSelector.options).some(option => option.value === previouslySelectedDate)) {
+            dateSelector.value = previouslySelectedDate;
+        } else if (sortedDates.length > 0) {
+            dateSelector.value = sortedDates[0]; // Se não, seleciona a data mais recente
+        } else {
+            // Se não há datas, adiciona uma opção indicando isso
+            const noDataOption = document.createElement('option');
+            noDataOption.value = '';
+            noDataOption.textContent = 'Nenhuma data disponível';
+            dateSelector.appendChild(noDataOption);
+            dateSelector.disabled = true; // Desabilita o select se não houver datas
+        }
+
+        // Adiciona o event listener apenas uma vez para evitar múltiplos listeners
+        if (!dateSelector.dataset.listenerAdded) {
+          dateSelector.addEventListener('change', (event) => {
+            drawCharts(event.target.value); // Redesenha os gráficos com a data selecionada
+          });
+          dateSelector.dataset.listenerAdded = 'true';
+        }
+      }
+
+
+      // Função para desenhar os gráficos, agora com filtragem de data
+      function drawCharts(selectedDate) {
+        // Destrói as instâncias de gráficos existentes para evitar problemas de memória/renderização
+        Object.values(myCharts).forEach(chart => {
+          if (chart) chart.destroy();
+        });
+        myCharts = {}; // Reinicia o objeto de instâncias de gráficos
+
+        let filteredTime = [];
+        let filteredTemp = [];
+        let filteredHum = [];
+        let filteredCo2 = [];
+
+        // Filtra os dados com base na data selecionada
+        allData.time.forEach((ts, index) => {
+          if (formatTimestampToDateString(ts) === selectedDate) {
+            filteredTime.push(formatTimestampForDisplay(ts)); // Formata para exibição no eixo X
+            filteredTemp.push(allData.temp[index]);
+            filteredHum.push(allData.hum[index]);
+            filteredCo2.push(allData.co2[index]);
+          }
+        });
+
+        // Função auxiliar para criar uma única instância de gráfico
+        const createChart = (ctxId, label, data, color, yMin = undefined, yMax = undefined) => {
+          const ctx = document.getElementById(ctxId);
+          if (ctx) { // Garante que o elemento canvas exista
+              myCharts[ctxId] = new Chart(ctx, {
+                  type: "line",
+                  data: {
+                      labels: filteredTime, // Usa o tempo filtrado para os rótulos
+                      datasets: [{
+                          label,
+                          data,
+                          borderColor: color,
+                          backgroundColor: color + "33",
+                          fill: true,
+                          tension: 0.3,
+                      }],
+                  },
+                  options: {
+                      responsive: true,
+                      plugins: {
+                          legend: { labels: { color: "#fff" } },
+                      },
+                      scales: {
+                          y: {
+                              ticks: { color: "#fff" },
+                              grid: { color: "#444" },
+                              min: yMin, // Escala fixa mínima
+                              max: yMax, // Escala fixa máxima
+                          },
+                          x: {
+                              ticks: {
+                                  color: "#fff",
+                                  maxTicksLimit: 8, // Limita a quantidade de labels no eixo X
+                                  autoSkip: true,
+                                  maxRotation: 0,
+                                  minRotation: 0,
+                              },
+                              grid: { color: "#444" },
+                          },
+                      },
+                  },
+              });
+          }
+        };
+
+        // Chama createChart para cada gráfico
+        createChart("tempChart", "Temperatura (C)", filteredTemp, "#02d7fd", 0, 30);
+        createChart("humidityChart", "Umidade (%)", filteredHum, "#ffd700",0,100);
+        createChart("co2Chart", "PPM CO2", filteredCo2, "#ff6384",200,1000);
+      }
+
+      // Chamada inicial e configuração do intervalo de atualização
       fetchCSV("/static/data/medicoes_resfria_tenertef.csv");
       setInterval(() => {
-        fetchCSV("/static/data/medicoes_resfria_tenertef.csv");
+          // Quando o intervalo dispara, busca os dados novamente, repopula o seletor
+          // e redesenha os gráficos mantendo a data selecionada se possível.
+          fetch('/static/data/medicoes_resfria_tenertef.csv')
+              .then(res => res.text())
+              .then(text => {
+                  parseCSV(text); // Parseia os novos dados e atualiza 'allData'
+                  populateDateTimeSelector(allData.time); // Passa o array de timestamps atualizado
+
+                  const dateSelector = document.getElementById('datetime');
+                  // A função populateDateTimeSelector já tenta restaurar a seleção anterior
+                  // ou definir a mais recente. Então, apenas redesenha com o valor atual do seletor.
+                  if (dateSelector && dateSelector.value) {
+                      drawCharts(dateSelector.value);
+                  }
+              });
       }, 30000);
     </script>
   </body>
