@@ -398,43 +398,39 @@
   </style>
 </head>
 
-  <body>
-    <aside class="sidebar hide" id="sidebar">
-      <div>
-        <a href="/">
-          <img
-            src="{{ url_for('static', filename='loguinho.png') }}"
-            alt="PUC Logo"
-            width="50"
-          />
-        </a>
-      </div>
-      <div class="nav-item">
-        <a href="/temperatura" title="Gráfico de Temperatura">
-          <i class="fas fa-thermometer-half"></i>
-        </a>
-      </div>
-      <div class="nav-item">
-        <a href="/dados" title="Dashboard de Dados">
-          <i class="fas fa-chart-line"></i>
-        </a>
-      </div>
-      <div class="nav-item">
-        <a href="/luminaires" title="Controle de Luminárias">
-          <i class="fas fa-lightbulb"></i>
-        </a>
-      </div>
-      <div class="nav-item">
-        <a href="/sensor" title="Sensores">
-          <i class="fas fa-microchip"></i>
-        </a>
-      </div>
-      <div class="nav-item who-we-are">
-        <a href="/about" title="Sobre Nós">
-          <i class="fas fa-info-circle"></i>
-        </a>
-      </div>
-    </aside>
+<body>
+  <aside class="sidebar hide" id="sidebar">
+    <div>
+      <a href="/">
+        <img src="{{ url_for('static', filename='loguinho.png') }}" alt="PUC Logo" width="50" />
+      </a>
+    </div>
+    <div class="nav-item">
+      <a href="/temperatura" title="Gráfico de Temperatura">
+        <i class="fas fa-thermometer-half"></i>
+      </a>
+    </div>
+    <div class="nav-item">
+      <a href="/dados" title="Dashboard de Dados">
+        <i class="fas fa-chart-line"></i>
+      </a>
+    </div>
+    <div class="nav-item">
+      <a href="/luminaires" title="Controle de Luminárias">
+        <i class="fas fa-lightbulb"></i>
+      </a>
+    </div>
+    <div class="nav-item">
+      <a href="/sensor" title="Sensores">
+        <i class="fas fa-microchip"></i>
+      </a>
+    </div>
+    <div class="nav-item who-we-are">
+      <a href="/about" title="Sobre Nós">
+        <i class="fas fa-info-circle"></i>
+      </a>
+    </div>
+  </aside>
 
   <div class="main-content" id="mainContent">
     <div class="top-bar">
@@ -447,24 +443,31 @@
     <div id="map"></div>
     <div id="logs-table">
       <div>
-        <h1>Registro dos Tokens</h1>
+        <h1>Atualizações da luminária</h1>
         <select name="" id="choose_luminaire">
           <option value="" disabled selected>Escolha uma luminária</option>
         </select>
         <button id="refresh-button">Atualizar</button>
       </div>
-      <table class="tabela-logs">
-        <thead class="tabela-cabecalho">
-          <tr>
-            <th>Última Atualização</th>
-            <th>Id do Ticket</th>
-            <th>Status do Ticket</th>
-            <th>Status do Comando</th>
-            <th>Comando</th>
-          </tr>
-        </thead>
-        <tbody id="logs" class="tabela-corpo"></tbody>
-      </table>
+      <div>
+        <table class="tabela-logs">
+          <thead class="tabela-cabecalho">
+            <tr>
+              <th>Última Atualização</th>
+              <th>Id do Ticket</th>
+              <th>Status do Ticket</th>
+              <th>Status do Comando</th>
+              <th>Comando</th>
+            </tr>
+          </thead>
+          <tbody id="logs" class="tabela-corpo"></tbody>
+        </table>
+        <div>
+          <h1>Gráficos</h1>
+          <div id="graph-section"><canvas id="ldrChart"></canvas></div>
+
+        </div>
+      </div>
     </div>
   </div>
 
@@ -487,10 +490,77 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
   <script>
+    function createLDRChart(apiData) {
+      const chartData = apiData.data;
+
+      // É crucial ordenar os dados pela data para o gráfico de linha fazer sentido
+      chartData.sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at));
+
+      // Extrai os dados para os eixos do gráfico
+      const labels = chartData.map(item => {
+        // Formata a data para melhor visualização (ex: "10/06 01:58")
+        return new Date(item.recorded_at).toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      });
+      const ldrValues = chartData.map(item => item.ldr_value);
+
+      const ctx = document.getElementById('ldrChart').getContext('2d');
+
+      new Chart(ctx, {
+        type: 'line', // Tipo de gráfico
+        data: {
+          labels: labels, // Rótulos do eixo X (tempo)
+          datasets: [{
+            label: 'Valor do Sensor LDR', // Legenda da linha
+            data: ldrValues, // Dados do eixo Y
+            borderColor: '#02d7fd', // Cor da linha (azul ciano)
+            backgroundColor: 'rgba(2, 215, 253, 0.2)', // Cor do preenchimento
+            fill: true, // Habilita o preenchimento abaixo da linha
+            tension: 0.3, // Deixa a linha com curvas suaves
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                color: '#ffffff', // Cor do texto da legenda
+                font: { size: 14 }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              titleColor: '#ffffff',
+              bodyColor: '#ffffff'
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: false, // O eixo Y não precisa começar em zero
+              ticks: { color: '#fff' }, // Cor dos números do eixo Y
+              grid: { color: 'rgba(255, 255, 255, 0.1)' } // Cor das linhas de grade
+            },
+            x: {
+              ticks: { color: '#fff' }, // Cor dos textos do eixo X
+              grid: { color: 'rgba(255, 255, 255, 0.1)' }
+            }
+          }
+        }
+      });
+    }
+
     function toggleSidebarVisibility() {
       const sb = document.getElementById("sidebar");
       const mc = document.getElementById("mainContent");
@@ -677,12 +747,31 @@
         return;
       }
       fetchTickets(lampSelected)
+      fetchLuminaireData(lampSelected)
     })
 
     choose_luminaire.addEventListener('change', (e) => {
       fetchTickets(e.target.value)
+      fetchLuminaireData(e.target.value)
       lampSelected = e.target.value
     })
+
+    function fetchLuminaireData(lampSerial) {
+      // ldrChart
+      const choose_url = `/api/luminaire/${lampSerial}`
+      fetch(choose_url, {
+        headers: { "Content-Type": "application/json" },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          const canvas_context = document.querySelector("#graph-section")
+          canvas_context.innerHTML = '<canvas id="ldrChart"></canvas>'
+          createLDRChart(data)
+        })
+        .catch((err) => {
+          alert("Erro na requisição: " + err);
+        });
+    }
 
     function fetchTickets(lampSerial) {
       const choose_url = `/api/luminaires/tickets?lampSerial=${lampSerial}`
