@@ -197,7 +197,7 @@
           co2.push(parseFloat(c3));
         }
 
-        const createChart = (ctxId, label, data, color) => {
+        const createChart = (ctxId, label, data, color,min,max) => {
           new Chart(document.getElementById(ctxId), {
             type: "line",
             data: {
@@ -217,7 +217,12 @@
               responsive: true,
               plugins: { legend: { labels: { color: "#fff" } } },
               scales: {
-                y: { ticks: { color: "#fff" }, grid: { color: "#444" } },
+                y: {
+                   ticks: { color: "#fff" }, 
+                   grid: { color: "#444" },
+                   min: min,
+                   max: max
+                },
                 x: {
                   ticks: {
                     color: "#fff",
@@ -233,9 +238,9 @@
           });
         };
 
-        createChart("tempChart", "Temperatura (C)", temp, "#02d7fd");
-        createChart("humidityChart", "Umidade (%)", hum, "#ffd700");
-        createChart("co2Chart", "PPM CO2", co2, "#ff6384");
+        createChart("tempChart", "Temperatura (C)", temp, "#02d7fd",0,30);
+        createChart("humidityChart", "Umidade (%)", hum, "#ffd700",0,100);
+        createChart("co2Chart", "PPM CO2", co2, "#ff6384",0,1000);
       }
 
       fetchCSV("/static/data/medicoes_resfria_tenertef.csv");
