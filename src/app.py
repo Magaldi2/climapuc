@@ -3,13 +3,14 @@ from flask import Flask, jsonify, render_template, send_from_directory, request 
 from multiprocessing import Process
 import mqtt_handler as mqtt_handler
 from mqtt_handler import setup_mqtt
+from mysql.connector import Error # Importar a classe de erro
 import math
 import requests
 import mysql.connector
 from dotenv import load_dotenv
 import jwt
 import os
-from datetime import datetime, timedelta , timezone
+import datetime
 import json
 import pandas as pd
 import joblib
@@ -32,6 +33,13 @@ API_URL = os.getenv("API_URL")
 API_USERNAME = os.getenv("API_USERNAME")
 API_PASSWORD = os.getenv("API_PASSWORD")
 AUTH_JSON = "src/auth.json"
+db_config = {
+    'host': os.getenv('MYSQL_HOST'),
+    'user': os.getenv('MYSQL_USER'),
+    'password': os.getenv('MYSQL_PASSWORD'),
+    'database': os.getenv('MYSQL_DATABASE'),
+    'port': int(os.getenv('MYSQL_PORT', 3306))
+}
 
 
 api_auth_token_full = None
@@ -395,9 +403,69 @@ def get_csv(filename):
     base_path = os.path.abspath(os.path.dirname(__file__))
     data_path = os.path.join(base_path, 'public', 'static', 'data')
     return send_from_directory(data_path, filename)
+
+def get_sql_conn():
+    """Cria e retorna uma conexão com o banco de dados usando a configuração global."""
+    conexao = None
+    try:
+        print(db_config)
+        conexao = mysql.connector.connect(**db_config)
+        if conexao.is_connected():
+            print(f"Conexão com o banco de dados '{db_config['database']}' estabelecida com sucesso!")
+            return conexao
+    except Error as e:
+        print(f"Erro ao conectar ao MySQL: {e}")
+        return None
+    
 @app.route('/sensor')
 def sensor_data():
     return render_template('sensor.html')
+
+@app.route('/api/luminaire/<lamp_serial>')
+def get_luminaire_data(lamp_serial):
+    conn = None
+    try:
+        conn = get_sql_conn()
+        if not conn:
+            # Usar um log aqui seria ideal em produção
+            print("FALHA NA ROTA: Não foi possível conectar ao banco de dados.")
+            return jsonify({"error": "Erro interno do servidor"}), 500
+
+        # Usar 'with' garante que o cursor seja fechado automaticamente
+        # A MÁGICA ACONTECE AQUI: dictionary=True
+        with conn.cursor(dictionary=True) as cursor:
+            luminaire_query = "SELECT * FROM luminaires WHERE serial_number = %s"
+            cursor.execute(luminaire_query, (lamp_serial,))
+
+            luminaire = cursor.fetchone()
+
+            if not luminaire:
+                return jsonify({"error": "Luminaria nao encontrada"}), 404
+            
+            query = "SELECT * FROM luminaire_data WHERE luminaire_id = %s ORDER BY recorded_at DESC"
+            cursor.execute(query, (luminaire['id'],))
+            
+            resultado = cursor.fetchall()
+
+            resultado_formatado = []
+            for row in resultado:
+                if 'recorded_at' in row and isinstance(row['recorded_at'], datetime.datetime):
+                    row['recorded_at'] = row['recorded_at'].isoformat()
+                resultado_formatado.append(row)
+
+            return jsonify({"data": resultado_formatado})
+            
+    except mysql.connector.Error as e:
+        print(f"ERRO DE BANCO DE DADOS: {e}")
+        return jsonify({"error": "Erro ao consultar os dados"}), 500
+    except Exception as e:
+        print(f"ERRO INESPERADO: {e}")
+        return jsonify({"error": "Ocorreu um erro inesperado"}), 500
+    finally:
+        if conn and conn.is_connected():
+            conn.close()
+            print("Conexão com o banco de dados fechada.")
+
 
 # Função para rodar o MQTT em um processo separado
 def run_mqtt():
