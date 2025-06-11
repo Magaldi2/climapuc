@@ -195,7 +195,7 @@ def index():
 
     temperature = current_data.get('temperature', 0)
     humidity = current_data.get('humidity', 0)
-    feels_like_temp = calculate_heat_index(temperature, humidity)
+    feels_like_temp = calculate_feels_like(temperature, humidity, average_wind_speed_kmh)
 
     wind_direction_rad = float(current_data.get('wind_direction', 0))
     uv_index = float(current_data.get('uv_index', 0))
