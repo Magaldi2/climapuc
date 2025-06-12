@@ -1,0 +1,252 @@
+<!-- Versão atualizada do sensor.html com gráficos separados por métrica e tamanho reduzido -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="600" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clima PUC - Projeto Resfria</title>
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='clima.png') }}"
+      type="image/png"
+    />
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Roboto", sans-serif;
+        background: #1f2a44;
+        color: #fff;
+        min-height: 100vh;
+      }
+      .sidebar {
+        position: fixed;
+        width: 80px;
+        height: 100vh;
+        background-color: #2a3550;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px 0;
+        z-index: 1000;
+      }
+      .sidebar .nav-item.who-we-are {
+        margin-top: auto;
+      }
+      .sidebar .nav-item {
+        margin: 20px 0;
+        color: #fff;
+      }
+      .sidebar .nav-item a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .sidebar .nav-item i {
+        font-size: 1.8em;
+      }
+      .main-content {
+        margin-left: 80px;
+        padding: 15px;
+      }
+      .top-bar {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .top-bar h1 {
+        font-size: 2em;
+        text-align: center;
+        flex-grow: 1;
+      }
+      .graph-section {
+        margin: 20px auto;
+        width: 95%;
+        max-width: 1000px;
+      }
+      .graph-section canvas {
+        background: transparent;
+        border-radius: 8px;
+        height: 40vh;
+      }
+    </style>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div>
+        <a href="/"
+          ><img
+            src="{{ url_for('static', filename='loguinho.png') }}"
+            alt="PUC Logo"
+            width="50"
+        /></a>
+      </div>
+      <div class="nav-item">
+        <a href="/temperatura" title="Gráfico de Temperatura"
+          ><i class="fas fa-thermometer-half"></i
+        ></a>
+      </div>
+      <div class="nav-item">
+        <a href="/dados" title="Dashboard de Dados"
+          ><i class="fas fa-chart-line"></i
+        ></a>
+      </div>
+      <div class="nav-item">
+        <a href="/luminaires" title="Controle de Luminarias"
+          ><i class="fas fa-lightbulb"></i
+        ></a>
+      </div>
+      <div class="nav-item">
+        <a href="/sensor" title="Sensores">
+          <i class="fas fa-microchip"></i>
+        </a>
+      </div>
+      <div class="nav-item who-we-are">
+        <a href="/about" title="Sobre Nós"
+          ><i class="fas fa-info-circle"></i
+        ></a>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <div class="top-bar">
+        <h1>Projeto Resfria e TEnerTEf</h1>
+      </div>
+      <div
+        class="top-images"
+        style="
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 30px;
+          margin-bottom: 20px;
+        "
+      >
+        <img
+          src="{{ url_for('static', filename='refria.jpg') }}"
+          alt="Imagem 1"
+          style="height: 70px"
+        />
+        <img
+          src="{{ url_for('static', filename='fapesp.jpg') }}"
+          alt="Imagem 2"
+          style="height: 70px"
+        />
+        <img
+          src="{{ url_for('static', filename='tenef.jpg') }}"
+          alt="Imagem 3"
+          style="height: 70px"
+        />
+        <img
+          src="{{ url_for('static', filename='pucpos.jpg') }}"
+          alt="Imagem 3"
+          style="height: 70px"
+        />
+      </div>
+      <div class="graph-section"><canvas id="tempChart"></canvas></div>
+      <div class="graph-section"><canvas id="humidityChart"></canvas></div>
+      <div class="graph-section"><canvas id="co2Chart"></canvas></div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      async function fetchCSV(url) {
+        const res = await fetch(url);
+        const text = await res.text();
+        drawCharts(text);
+      }
+
+      function formatTimestamp(ts) {
+        // Tenta converter para Date, suporta tanto ISO quanto epoch
+        const d = new Date(ts);
+        if (!isNaN(d)) {
+          // Exibe só hora:minuto se for do mesmo dia, senão dia/mês hora:minuto
+          const dia = String(d.getDate()).padStart(2, "0");
+          const mes = String(d.getMonth() + 1).padStart(2, "0");
+          const hora = String(d.getHours()).padStart(2, "0");
+          const min = String(d.getMinutes()).padStart(2, "0");
+          return `${dia}/${mes} ${hora}:${min}`;
+        }
+        return ts;
+      }
+
+      function drawCharts(csv) {
+        const lines = csv.trim().split("\n");
+        const headers = lines[0].split(",");
+        const time = [],
+          temp = [],
+          hum = [],
+          co2 = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const [t, c1, c2, c3] = lines[i].split(",").map((e) => e.trim());
+          time.push(formatTimestamp(t));
+          temp.push(parseFloat(c1));
+          hum.push(parseFloat(c2));
+          co2.push(parseFloat(c3));
+        }
+
+        const createChart = (ctxId, label, data, color,min,max) => {
+          new Chart(document.getElementById(ctxId), {
+            type: "line",
+            data: {
+              labels: time,
+              datasets: [
+                {
+                  label,
+                  data,
+                  borderColor: color,
+                  backgroundColor: color + "33",
+                  fill: true,
+                  tension: 0.3,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              plugins: { legend: { labels: { color: "#fff" } } },
+              scales: {
+                y: {
+                   ticks: { color: "#fff" }, 
+                   grid: { color: "#444" },
+                   min: min,
+                   max: max
+                },
+                x: {
+                  ticks: {
+                    color: "#fff",
+                    maxTicksLimit: 8, // Limita a quantidade de labels no eixo X
+                    autoSkip: true,
+                    maxRotation: 0,
+                    minRotation: 0,
+                  },
+                  grid: { color: "#444" },
+                },
+              },
+            },
+          });
+        };
+
+        createChart("tempChart", "Temperatura (C)", temp, "#02d7fd",0,30);
+        createChart("humidityChart", "Umidade (%)", hum, "#ffd700",0,100);
+        createChart("co2Chart", "PPM CO2", co2, "#ff6384",0,1000);
+      }
+
+      fetchCSV("/static/data/medicoes_resfria_tenertef.csv");
+      setInterval(() => {
+        fetchCSV("/static/data/medicoes_resfria_tenertef.csv");
+      }, 30000);
+    </script>
+  </body>
+</html>
